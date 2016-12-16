@@ -1,1 +1,3 @@
 *.o
+# executables
+bin
