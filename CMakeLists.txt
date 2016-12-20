@@ -37,3 +37,4 @@ INCLUDE_DIRECTORIES(${GDAL_INCLUDE_DIR} ${MPI_INCLUDE_PATH})
 ################# Packages found ##################
 SET (TAUDEM_SRC ./src)
 ADD_SUBDIRECTORY(${TAUDEM_SRC})
+MESSAGE(STATUS "    Compiling TauDEM done")
