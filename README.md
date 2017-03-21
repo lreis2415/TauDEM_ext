@@ -1,53 +1,31 @@
-# SEIMS
--------
-[![Build status](https://ci.appveyor.com/api/projects/status/i3mxjy0wjgphcyu1/branch/master?svg=true)](https://ci.appveyor.com/project/lreis-2415/seims/branch/master) [![Build Status](http://badges.herokuapp.com/travis/lreis2415/SEIMS?branch=master&env=BUILD_NAME=linux_gcc48&label=linux_gcc48)](https://travis-ci.org/lreis2415/SEIMS) [![Build Status](http://badges.herokuapp.com/travis/lreis2415/SEIMS?branch=master&env=BUILD_NAME=osx_xcode&label=osx_clang)](https://travis-ci.org/lreis2415/SEIMS)
+# TauDEM
+---------------------------
+TauDEM(Terrain Analysis Using Digital Elevation Models) is a suite of Digital Elevation Model (DEM) tools for the extraction and analysis of hydrologic information from topography as represented by a DEM.
 
+For more information on the development of TauDEM please refer to the wiki https://github.com/dtarb/TauDEM/wiki.
 
-## 1.Brief introduction
+For the latest release and detailed documentation please refer to the website: http://hydrology.usu.edu/taudem.
 
-The **Spatially Explicit Integrated Modeling System** (**SEIMS**), is an integrated, modular, parallized, fully-distributed, and continuous Watershed modeling and scenario analysis system.
+TauDEM采用C/C++编写，矢栅数据读写基于GDAL库，因此可以跨平台编译。
 
-SEIMS is mainly written by **C++** with support of [GDAL](https://github.com/OSGeo/gdal), [Mongo-C-Driver](https://github.com/mongodb/mongo-c-driver), [OpenMP](https://en.wikipedia.org/wiki/OpenMP) and/or [MPI](https://en.wikipedia.org/wiki/Message_Passing_Interface), while **Python** is used for organizing the preprocessing, postprocessing, scenario analysis, etc. workflows. SEIMS is intented to be an open-source, cross-platform, and high performaced integrated watershed modeling system. Theoretically, SEIMS could be compiled by common used compiler (e.g. MSVC, GCC, and Clang) as 32-bit or 64-bit programs and run on any mainstream OS (e.g. Windows, Linux, and macOS).
+## Windows
 
-SEIMS contains several module catogories, include **Hydrology, Erosion, Nutrient, Plant Growth, BMP Management**, etc. Algorithms are integrated from SWAT, LISEM, WetSpa Extension, DHSVM, CASC2D, etc.
+## Linux
 
-SEIMS is still being developing and any constructive feedback (issues or push requests) will be welcome and appreciated.
+## macOS
 
-## 2.Wiki
-Currently, only Chinese-version wiki is provided and hosted on Github, English-version will be available in the near future. More information on [SEIMS Wiki](https://github.com/lreis2415/SEIMS/wiki).
++ 采用clang编译器，生成Xcode工程：`cmake -G "Xcode" <source path>`
 
-## 3.Get Started
-### 3.1.Get source code
+> Note: 在执行cmake命令之前，请确保先打开Xcode，在Preference里的Locations，设置Command Line Tools为合适的版本，比如Xcode 8.2.
 
-+ Download or clone from [Github](https://github.com/lreis2415/SEIMS). A useful Github guidiance can be found [here](https://github.com/lreis2415/SEIMS/wiki/Git-guidance).
-+ Read the [basic code structure](https://github.com/lreis2415/SEIMS/master/seims/README.md).
-
-### 3.2.Compile and Install
-
-+ [Windows](https://github.com/lreis2415/SEIMS2017/wiki/Windows)
-+ [Linux](https://github.com/lreis2415/SEIMS2017/wiki/Linux)
-+ [macOS](https://github.com/lreis2415/SEIMS2017/wiki/macOS)
-
-### 3.3.Config MongoDB database
-+ [Install MongoDB client and start mongo service automatically.](https://github.com/lreis2415/SEIMS2017/wiki/MongoDB-install-and-config)
-+ You may need a MongoDB IDE to view and edit data. MongoVUE, Robomongo, or Mongo Explorer for JetBrains (e.g. PyCharm, CLion) are recommended.
-
-### 3.4.Run the Demo data
-Demo data is provided in `~/data`. SEIMS workflow can be summerized as five part.
-+ a) [Data preparation](https://github.com/lreis2415/SEIMS2017/wiki/Data-preparation) and [Preprocessing for SEIMS](https://github.com/lreis2415/SEIMS2017/wiki/Data-preprocess)
-+ b) [Run SEIMS model](https://github.com/lreis2415/SEIMS2017/wiki/Executation-and-calibration)
-+ c) [Postprocess, e.g. export hydrograph](https://github.com/lreis2415/SEIMS2017/wiki/result-postprocess)
-+ d) Model calibration
-+ e) Scenario analysis
-
-### 3.5.Build your own model
-Now, you can build you own SEIMS model!
-
-
-Contact Us
-----------
-Dr.Junzhi Liu (liujunzhi@njnu.edu.cn)
-
-Liangjun Zhu (zlj@lreis.ac.cn)
-
-*Updated: 2017-3-21*
++ 直接编译安装
+```shell
+cmake <source path> -DCMAKE_BUILD_TYPE=Release
+make
+sudo make install
+```
++ 如果希望使用GCC编译器，则可在上述代码之前：
+```shell
+export CC=/usr/local/bin/gcc-4.9
+export CXX=/usr/local/bin/g++-4.9
+```
