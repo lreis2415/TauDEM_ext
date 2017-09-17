@@ -39,6 +39,7 @@ set(STREAMNET streamnetmn.cpp streamnet.cpp
 set(THRESHOLD Threshold.cpp Thresholdmn.cpp ${common_srcs})
 set(GAGEWATERSHED gagewatershedmn.cpp gagewatershed.cpp ${common_srcs}
         ${shape_srcs})
+set(TWI twimn.cpp twi.cpp ${common_srcs} ${shape_srcs})
 
 add_executable(aread8 ${D8FILES})
 add_executable(areadinf ${DINFFILES})
@@ -68,6 +69,7 @@ add_executable(slopeavedown ${SLOPEAVEDOWN})
 add_executable(streamnet ${STREAMNET})
 add_executable(threshold ${THRESHOLD})
 add_executable(gagewatershed ${GAGEWATERSHED})
+add_executable(twi ${TWI})
 
 set(MY_TARGETS aread8
         areadinf
@@ -97,6 +99,7 @@ set(MY_TARGETS aread8
         streamnet
         threshold
         gagewatershed
+        twi
         )
 
 foreach (c_target ${MY_TARGETS})
