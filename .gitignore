@@ -157,3 +157,7 @@ Taudem5PCVS2015
 Notes
 Utilities
 bin
+
+# Clion
+cmake-build*/
+.idea
