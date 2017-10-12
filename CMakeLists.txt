@@ -17,7 +17,7 @@ ELSE ()
 ENDIF ()
 ################# Find packages ##################
 # MPI and GDAL are required
-IF (WIN32)
+IF (MSVC)
     # 1. GDAL
     SET(GDAL_DIR $ENV{GDAL_DIR})
     SET(GDAL_DIR $ENV{GDAL_DIR})
@@ -34,6 +34,9 @@ IF (WIN32)
     SET(MPI_HOME $ENV{MSMPI_BIN})
     SET(MPI_INCLUDE_PATH $ENV{MSMPI_INC})
     SET(MPI_LIBRARIES ${MPI_LIB}\\msmpi.lib)
+
+    MESSAGE(STATUS "Found GDAL: ${GDAL_LIBRARIES}")
+    MESSAGE(STATUS "Found MPI: ${MPI_LIBRARIES}")
 ELSE ()
     # for Linux and macOS
     # 1. GDAL, CMake will find GDAL and get GDAL_INCLUDE_DIR and GDAL_LIBRARY.
@@ -46,6 +49,33 @@ ELSE ()
         set(CMAKE_EXE_LINKER_FLAGS "-Wl -headerpad_max_install_names")
     ENDIF ()
 ENDIF ()
+# Fixup GDAL variable.
+IF(WIN32 AND MINGW)
+    # On Windows, find_package always selects the release dll named
+    # libgdal.dll. This is a symbolic links which trips the linker. Also,
+    # for debug builds, we want to link against the debug library.
+    # Before fixing this, verify that the variable contains a single string
+    # and that the name is libgdal.dll. The CMake module may be fixed at
+    # some point.
+    LIST(LENGTH GDAL_LIBRARIES NR_GDAL_LIBRARIES)
+    IF(NR_GDAL_LIBRARIES EQUAL 1)
+        GET_FILENAME_COMPONENT(GDAL_LIBRARY_NAME ${GDAL_LIBRARIES} NAME)
+
+        IF(GDAL_LIBRARY_NAME STREQUAL "libgdal.dll")
+            SET(GDAL_VERSION "1.11.5")
+            SET(OPTIMIZED_GDAL_LIBRARY ${GDAL_LIBRARIES}.${GDAL_VERSION})
+            SET(DEBUG_GDAL_LIBRARY ${GDAL_LIBRARIES}.${GDAL_VERSION})
+            STRING(REPLACE gdal gdald DEBUG_GDAL_LIBRARY ${DEBUG_GDAL_LIBRARY})
+            SET(GDAL_LIBRARIES
+                    optimized ${OPTIMIZED_GDAL_LIBRARY}
+                    debug ${DEBUG_GDAL_LIBRARY})
+        ENDIF()
+    ENDIF()
+ENDIF()
+
+MESSAGE(STATUS "GDAL include: ${GDAL_INCLUDE_DIR}")
+MESSAGE(STATUS "MPI include: ${MPI_INCLUDE_PATH}")
+
 # Set a default build type for single-configuration
 # CMake generators if no build type is set.
 IF(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
@@ -64,14 +94,20 @@ ELSE()
     SET(CMAKE_CXX_FLAGS_RELEASE "-O2")
     SET(CMAKE_CXX_FLAGS_DEBUG  "-O0 -g")
 ENDIF()
-
-INCLUDE_DIRECTORIES(${GDAL_INCLUDE_DIR} ${MPI_INCLUDE_PATH})
 ################# Packages found ##################
-SET(TAUDEM_SRC ./src)
+IF(MSVC)
+  SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
+ENDIF()
+SET(TAUDEM_SRC ${CMAKE_SOURCE_DIR}/src)
+SET(TAUDEM_EXT_SRC ${CMAKE_SOURCE_DIR}/src_ext)
+
+# GDAL_INCLUDE_DIR should after TAUDEM_SRC, since tiffIO.h both existed in the two dirs.
+INCLUDE_DIRECTORIES(${TAUDEM_SRC} ${GDAL_INCLUDE_DIR} ${MPI_INCLUDE_PATH})
 ADD_SUBDIRECTORY(${TAUDEM_SRC})
+ADD_SUBDIRECTORY(${TAUDEM_EXT_SRC})
 ### For CLion to implement the "make install" command
 add_custom_target(install_${PROJECT_NAME}
         $(MAKE) install
-        DEPENDS ${PROJECT_NAME}
+        DEPENDS ${EXT_TARGETS} ${MY_TARGETS}
         COMMENT "Installing ${PROJECT_NAME}")
 MESSAGE(STATUS "    Compiling TauDEM done")

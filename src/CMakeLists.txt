@@ -108,3 +108,9 @@ foreach (c_target ${MY_TARGETS})
         SET_PROPERTY(TARGET ${c_target} PROPERTY FOLDER "TauDEM")
     ENDIF ()
 endforeach (c_target ${MY_TARGETS})
+
+### For CLion to implement the "make install" command
+#add_custom_target(install_${PROJECT_NAME}
+#        $(MAKE) install
+#        DEPENDS ${MY_TARGETS}
+#        COMMENT "Installing ${PROJECT_NAME}")
