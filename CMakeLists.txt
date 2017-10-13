@@ -36,7 +36,7 @@ IF (NOT(WIN32 AND MINGW))
     find_package(MPI REQUIRED)
     set(CMAKE_CXX_FLAG "${CMAKE_CXX_FLAG} ${MPI_COMPILE_FLAGS}")
     set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_LINK_FLAGS}")
-    IF (APPLE)
+    IF (CMAKE_CXX_COMPILER_ID MATCHES "Clang") # using regular Clang or AppleClang
         set(CMAKE_EXE_LINKER_FLAGS "-Wl -headerpad_max_install_names")
     ENDIF ()
 ENDIF ()
