@@ -120,8 +120,9 @@ int connectdown(char *pfile,
 
         //Create partition and read data
         tdpartition *wData;
-        long nodatav;
-        nodatav = (long) wIO.getNodata();
+        // not used variable, comment by ljzhu
+        // long nodatav;
+        // nodatav = (long) wIO.getNodata();
         //tdpartition *wData;
         wData = CreateNewPartition(wIO.getDatatype(), wTotalX, wTotalY, wdx, wdy, wIO.getNodata());
         int nx = wData->getnx();
