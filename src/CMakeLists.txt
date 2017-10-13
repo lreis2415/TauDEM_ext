@@ -1,7 +1,7 @@
 set(shape_srcs ReadOutlets.cpp)
 set(common_srcs commonLib.cpp tiffIO.cpp)
 
-set(CONNECTDOWNFILES connectdownmn.cpp connectdown.cpp ${common_srcs} ${shape_srcs})
+set(CONNECTDOWNFILES ConnectDownmn.cpp ConnectDown.cpp ${common_srcs} ${shape_srcs})
 set(D8FILES aread8mn.cpp aread8.cpp ${common_srcs} ${shape_srcs})
 set(DINFFILES areadinfmn.cpp areadinf.cpp ${common_srcs} ${shape_srcs})
 set(D8 D8FlowDirmn.cpp d8.cpp Node.cpp ${common_srcs} ${shape_srcs})
@@ -39,7 +39,7 @@ set(STREAMNET streamnetmn.cpp streamnet.cpp
 set(THRESHOLD Threshold.cpp Thresholdmn.cpp ${common_srcs})
 set(GAGEWATERSHED gagewatershedmn.cpp gagewatershed.cpp ${common_srcs}
         ${shape_srcs})
-set(TWI twimn.cpp twi.cpp ${common_srcs} ${shape_srcs})
+set(TWI TWImn.cpp TWI.cpp ${common_srcs} ${shape_srcs})
 
 add_executable(aread8 ${D8FILES})
 add_executable(areadinf ${DINFFILES})
