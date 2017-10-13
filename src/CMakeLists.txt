@@ -102,15 +102,9 @@ set(MY_TARGETS aread8
         twi
         )
 foreach (c_target ${MY_TARGETS})
-    target_link_libraries(${c_target} ${MPI_LIBRARIES} ${GDAL_LIBRARY})
+    target_link_libraries(${c_target} ${MPI_LIBRARIES} ${GDAL_LIBRARIES})
     install(TARGETS ${c_target} DESTINATION ${INSTALL_DIR})
     IF (MSVC)
         SET_PROPERTY(TARGET ${c_target} PROPERTY FOLDER "TauDEM")
     ENDIF ()
 endforeach (c_target ${MY_TARGETS})
-
-### For CLion to implement the "make install" command
-#add_custom_target(install_${PROJECT_NAME}
-#        $(MAKE) install
-#        DEPENDS ${MY_TARGETS}
-#        COMMENT "Installing ${PROJECT_NAME}")

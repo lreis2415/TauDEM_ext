@@ -54,6 +54,7 @@ ENDIF()
 #   ${CMAKE_CXX_COMPILER} -dumpmachine examples:
 #     in Windows 10, ming64 bash: x86_64-w64-mingw32
 #     in CentOS 6.2: x86_64-redhat-linux
+#     in macOS 10.12.6: x86_64-apple-darwin16.7.0
 # ----------------------------------------------------------------------------
 IF(CMAKE_COMPILER_IS_GNUCXX)
   IF(WIN32)

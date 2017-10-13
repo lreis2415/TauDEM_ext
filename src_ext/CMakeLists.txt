@@ -10,7 +10,7 @@ set(EXT_TARGETS curvature
         )
 # third-party programs based on TauDEM framework
 foreach (c_target ${EXT_TARGETS})
-    target_link_libraries(${c_target} ${MPI_LIBRARIES} ${GDAL_LIBRARY})
+    target_link_libraries(${c_target} ${MPI_LIBRARIES} ${GDAL_LIBRARIES})
     install(TARGETS ${c_target} DESTINATION ${INSTALL_DIR})
     IF (MSVC)
         SET_PROPERTY(TARGET ${c_target} PROPERTY FOLDER "TauDEM_EXT")
