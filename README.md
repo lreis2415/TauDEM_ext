@@ -19,7 +19,7 @@ TauDEM采用C/C++编写，矢栅数据读写基于GDAL库，因此可以跨平�
 + 安装MSMPI，并用msys的dlltool生成`.a`链接库
 + 利用mingw64编译GDAL，可用peacock辅助编译
 + 利用CLion IDE编辑、编译TauDEM，在`File->Settings->Build,Execution,Deployment->CMake->CMake options`中显式指定GDAL和MPI路径，如
-`-DGDAL_INCLUDE_DIR=C:\peacock\windows\windows\mingw-4\x86_64\include -DMPI_LIBRARIES=C:/mingw64/lib/gcc/x86_64-w64-mingw32/4.9.3/libmsmpi.a -DMPI_INCLUDE_PATH=C:/mingw64/lib/gcc/x86_64-w64-mingw32/4.9.3/include`
+`-DGEO_3RD_PARTY_ROOT=C:\peacock\windows\windows\mingw-4\x86_64 -DMPI_LIBRARIES=C:/mingw64/lib/libmsmpi.a -DMPI_INCLUDE_PATH=C:/mingw64/include`
 
 参考：
 + http://www.math.ucla.edu/~wotaoyin/windows_coding.html
