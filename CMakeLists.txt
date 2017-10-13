@@ -17,31 +17,22 @@ ELSE ()
 ENDIF ()
 ################# Find packages ##################
 # MPI and GDAL are required
+# 1. GDAL
 IF (MSVC)
-    # 1. GDAL
     SET(GDAL_DIR $ENV{GDAL_DIR})
     SET(GDAL_DIR $ENV{GDAL_DIR})
     SET(GDAL_INCLUDE_DIR ${GDAL_DIR}\\include)
     SET(GDAL_LIBRARIES ${GDAL_DIR}\\lib)
     SET(GDAL_BIN_DIR ${GDAL_DIR}\\bin)
     SET(GDAL_LIBRARY ${GDAL_LIBRARIES}\\gdal_i.lib)
-    # 2. MPI
-    IF (ARCH EQUAL 64)
-        SET(MPI_LIB $ENV{MSMPI_LIB64})
-    ELSE ()
-        SET(MPI_LIB $ENV{MSMPI_LIB32})
-    ENDIF ()
-    SET(MPI_HOME $ENV{MSMPI_BIN})
-    SET(MPI_INCLUDE_PATH $ENV{MSMPI_INC})
-    SET(MPI_LIBRARIES ${MPI_LIB}\\msmpi.lib)
-
     MESSAGE(STATUS "Found GDAL: ${GDAL_LIBRARIES}")
-    MESSAGE(STATUS "Found MPI: ${MPI_LIBRARIES}")
-ELSE ()
-    # for Linux and macOS
+ELSE()
+    # for Linux and macOS or mingw in Windows
     # 1. GDAL, CMake will find GDAL and get GDAL_INCLUDE_DIR and GDAL_LIBRARY.
     find_package(GDAL REQUIRED)
-    # 2. MPI
+ENDIF()
+# 2. MPI
+IF (NOT(WIN32 AND MINGW))
     find_package(MPI REQUIRED)
     set(CMAKE_CXX_FLAG "${CMAKE_CXX_FLAG} ${MPI_COMPILE_FLAGS}")
     set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} ${MPI_LINK_FLAGS}")
@@ -60,7 +51,6 @@ IF(WIN32 AND MINGW)
     LIST(LENGTH GDAL_LIBRARIES NR_GDAL_LIBRARIES)
     IF(NR_GDAL_LIBRARIES EQUAL 1)
         GET_FILENAME_COMPONENT(GDAL_LIBRARY_NAME ${GDAL_LIBRARIES} NAME)
-
         IF(GDAL_LIBRARY_NAME STREQUAL "libgdal.dll")
             SET(GDAL_VERSION "1.11.5")
             SET(OPTIMIZED_GDAL_LIBRARY ${GDAL_LIBRARIES}.${GDAL_VERSION})
