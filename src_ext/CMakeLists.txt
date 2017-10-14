@@ -1,5 +1,7 @@
 set(shape_srcs ${TAUDEM_SRC}/ReadOutlets.cpp)
 set(common_srcs ${TAUDEM_SRC}/commonLib.cpp ${TAUDEM_SRC}/tiffIO.cpp)
+# Adds include directories in such a way that directories from the TauDEM source tree go first.
+geo_include_directories(${TAUDEM_SRC})
 
 # Added by Liangjun Zhu, 2015/5/21
 set(CURVATURE Curvature.cpp Curvaturemn.cpp ${common_srcs})
