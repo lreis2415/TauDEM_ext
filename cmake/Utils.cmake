@@ -1,12 +1,12 @@
 INCLUDE(CMakeParseArguments)
 
 # clears all passed variables
-macro(clear_vars)
+MACRO(clear_vars)
   foreach(_var ${ARGN})
     unset(${_var})
     unset(${_var} CACHE)
   endforeach()
-endmacro()
+ENDMACRO()
 
 MACRO(geo_check_compiler_flag LANG FLAG RESULT)
   set(_fname "${ARGN}")
@@ -201,20 +201,11 @@ macro(geo_path_join result_var P1 P2_)
   #message(STATUS "'${P1}' '${P2_}' => '${${result_var}}'")
 endmacro()
 
-# rename modules target to world if needed
-macro(_geo_fix_target target_var)
-  if(BUILD_opencv_world)
-    if(OPENCV_MODULE_${${target_var}}_IS_PART_OF_WORLD)
-      set(${target_var} opencv_world)
-    endif()
-  endif()
-endmacro()
 
-function(geo_is_opencv_directory result_var dir)
+function(geo_is_repo_directory result_var dir)
   get_filename_component(__abs_dir "${dir}" ABSOLUTE)
-  if("${__abs_dir}" MATCHES "^${OpenCV_SOURCE_DIR}"
-      OR "${__abs_dir}" MATCHES "^${OpenCV_BINARY_DIR}"
-      OR (OPENCV_EXTRA_MODULES_PATH AND "${__abs_dir}" MATCHES "^${OPENCV_EXTRA_MODULES_PATH}"))
+  if("${__abs_dir}" MATCHES "^${CMAKE_SOURCE_DIR}"
+      OR "${__abs_dir}" MATCHES "^${CMAKE_BINARY_DIR}")
     set(${result_var} 1 PARENT_SCOPE)
   else()
     set(${result_var} 0 PARENT_SCOPE)
@@ -222,13 +213,13 @@ function(geo_is_opencv_directory result_var dir)
 endfunction()
 
 
-# adds include directories in such a way that directories from the OpenCV source tree go first
+# adds include directories in such a way that directories from the repository source tree go first
 function(geo_include_directories)
   geo_debug_message("geo_include_directories( ${ARGN} )")
   set(__add_before "")
   foreach(dir ${ARGN})
-    geo_is_opencv_directory(__is_opencv_dir "${dir}")
-    if(__is_opencv_dir)
+    geo_is_repo_directory(__is_repo_dir "${dir}")
+    if(__is_repo_dir)
       list(APPEND __add_before "${dir}")
     elseif(CMAKE_COMPILER_IS_GNUCXX AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS "6.0" AND
            dir MATCHES "/usr/include$")
@@ -249,49 +240,6 @@ function(geo_append_target_property target prop)
     set_target_properties(${target} PROPERTIES ${prop} "${ARGN}")
   endif()
 endfunction()
-
-function(geo_append_dependant_targets target)
-  #geo_debug_message("geo_append_dependant_targets(${target} ${ARGN})")
-  _geo_fix_target(target)
-  set(OPENCV_DEPENDANT_TARGETS_${target} "${OPENCV_DEPENDANT_TARGETS_${target}};${ARGN}" CACHE INTERNAL "" FORCE)
-endfunction()
-
-# adds include directories in such a way that directories from the OpenCV source tree go first
-function(geo_target_include_directories target)
-  #geo_debug_message("geo_target_include_directories(${target} ${ARGN})")
-  _geo_fix_target(target)
-  set(__params "")
-  if(CMAKE_COMPILER_IS_GNUCXX AND NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS "6.0" AND
-      ";${ARGN};" MATCHES "/usr/include;")
-    return() # workaround for GCC 6.x bug
-  endif()
-  foreach(dir ${ARGN})
-    get_filename_component(__abs_dir "${dir}" ABSOLUTE)
-    geo_is_opencv_directory(__is_opencv_dir "${dir}")
-    if(__is_opencv_dir)
-      list(APPEND __params "${__abs_dir}")
-    else()
-      list(APPEND __params "${dir}")
-    endif()
-  endforeach()
-  if(HAVE_CUDA OR CMAKE_VERSION VERSION_LESS 2.8.11)
-    include_directories(${__params})
-  else()
-    if(TARGET ${target})
-      target_include_directories(${target} PRIVATE ${__params})
-      if(OPENCV_DEPENDANT_TARGETS_${target})
-        foreach(t ${OPENCV_DEPENDANT_TARGETS_${target}})
-          target_include_directories(${t} PRIVATE ${__params})
-        endforeach()
-      endif()
-    else()
-      set(__new_inc "${OCV_TARGET_INCLUDE_DIRS_${target}};${__params}")
-      set(OCV_TARGET_INCLUDE_DIRS_${target} "${__new_inc}" CACHE INTERNAL "")
-    endif()
-  endif()
-endfunction()
-
-
 
 set(OCV_COMPILER_FAIL_REGEX
     "command line option .* is valid for .* but not for C\\+\\+" # GNU
@@ -357,7 +305,7 @@ macro(geo_warnings_disable)
           set(${var} "${${var}} ${warning}")
         endforeach()
       endforeach()
-    elseif((CMAKE_COMPILER_IS_GNUCXX OR (UNIX AND CV_ICC)) AND _gxx_warnings AND _flag_vars)
+    elseif((CMAKE_COMPILER_IS_GNUCXX OR (UNIX AND GEO_ICC)) AND _gxx_warnings AND _flag_vars)
       foreach(var ${_flag_vars})
         foreach(warning ${_gxx_warnings})
           if(NOT warning MATCHES "^-Wno-")
@@ -371,7 +319,7 @@ macro(geo_warnings_disable)
         endforeach()
       endforeach()
     endif()
-    if(CV_ICC AND _icc_warnings AND _flag_vars)
+    if(GEO_ICC AND _icc_warnings AND _flag_vars)
       foreach(var ${_flag_vars})
         foreach(warning ${_icc_warnings})
           if(UNIX)
@@ -403,29 +351,11 @@ macro(geo_append_source_file_compile_definitions source)
   set_source_files_properties("${source}" PROPERTIES COMPILE_DEFINITIONS "${_value}")
 endmacro()
 
-macro(add_apple_compiler_options the_module)
-  geo_check_flag_support(OBJCXX "-fobjc-exceptions" HAVE_OBJC_EXCEPTIONS "")
-  if(HAVE_OBJC_EXCEPTIONS)
-    foreach(source ${OPENCV_MODULE_${the_module}_SOURCES})
-      if("${source}" MATCHES "\\.mm$")
-        get_source_file_property(flags "${source}" COMPILE_FLAGS)
-        if(flags)
-          set(flags "${_flags} -fobjc-exceptions")
-        else()
-          set(flags "-fobjc-exceptions")
-        endif()
-
-        set_source_files_properties("${source}" PROPERTIES COMPILE_FLAGS "${flags}")
-      endif()
-    endforeach()
-  endif()
-endmacro()
-
 # Provides an option that the user can optionally select.
 # Can accept condition to control when option is available for user.
 # Usage:
 #   option(<option_variable> "help string describing the option" <initial value or boolean expression> [IF <condition>])
-macro(OCV_OPTION variable description value)
+macro(GEO_OPTION variable description value)
   set(__value ${value})
   set(__condition "")
   set(__varname "__value")
@@ -506,7 +436,7 @@ endmacro()
 # Macro that checks if module has been installed.
 # After it adds module to build and define
 # constants passed as second arg
-macro(CHECK_MODULE module_name define cv_module)
+macro(CHECK_MODULE module_name define geo_module)
   set(${define} 0)
   if(PKG_CONFIG_FOUND)
     set(ALIAS               ALIASOF_${module_name})
@@ -518,37 +448,20 @@ macro(CHECK_MODULE module_name define cv_module)
     PKG_CHECK_MODULES(${ALIAS} ${module_name})
     if(${ALIAS_FOUND})
       set(${define} 1)
-      geo_append_build_options(${cv_module} ${ALIAS})
+      geo_append_build_options(${geo_module} ${ALIAS})
     endif()
   endif()
 endmacro()
 
 if(NOT DEFINED CMAKE_ARGC) # Guard CMake standalone invocations
-
-set(OPENCV_BUILD_INFO_FILE "${CMAKE_BINARY_DIR}/version_string.tmp")
-file(REMOVE "${OPENCV_BUILD_INFO_FILE}")
+set(GEO_BUILD_INFO_FILE "${CMAKE_BINARY_DIR}/version_string.tmp")
+file(REMOVE "${GEO_BUILD_INFO_FILE}")
 function(geo_output_status msg)
   message(STATUS "${msg}")
   string(REPLACE "\\" "\\\\" msg "${msg}")
   string(REPLACE "\"" "\\\"" msg "${msg}")
-  file(APPEND "${OPENCV_BUILD_INFO_FILE}" "\"${msg}\\n\"\n")
+  file(APPEND "${GEO_BUILD_INFO_FILE}" "\"${msg}\\n\"\n")
 endfunction()
-
-macro(geo_finalize_status)
-  if(NOT OPENCV_SKIP_STATUS_FINALIZATION)
-    if(DEFINED OPENCV_MODULE_opencv_core_BINARY_DIR)
-      execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different "${OPENCV_BUILD_INFO_FILE}" "${OPENCV_MODULE_opencv_core_BINARY_DIR}/version_string.inc" OUTPUT_QUIET)
-    endif()
-  endif()
-
-  if(UNIX)
-    install(FILES "${OpenCV_SOURCE_DIR}/platforms/scripts/valgrind.supp"
-                  "${OpenCV_SOURCE_DIR}/platforms/scripts/valgrind_3rdparty.supp"
-            DESTINATION "${OPENCV_OTHER_INSTALL_PATH}" COMPONENT "dev")
-  endif()
-endmacro()
-
-
 # Status report function.
 # Automatically align right column and selects text based on condition.
 # Usage:
@@ -672,13 +585,6 @@ macro(geo_list_pop_front LST VAR)
   endif()
 endmacro()
 
-
-# simple regex escaping routine (does not cover all cases!!!)
-macro(geo_regex_escape var regex)
-  string(REGEX REPLACE "([+.*^$])" "\\\\1" ${var} "${regex}")
-endmacro()
-
-
 # convert list of paths to full paths
 macro(geo_convert_to_full_paths VAR)
   if(${VAR})
@@ -703,86 +609,6 @@ function(geo_convert_to_lib_name var)
   endforeach()
   set(${var} ${tmp} PARENT_SCOPE)
 endfunction()
-
-
-# add install command
-function(geo_install_target)
-  if(APPLE_FRAMEWORK AND BUILD_SHARED_LIBS)
-    install(TARGETS ${ARGN} FRAMEWORK DESTINATION ${OPENCV_3P_LIB_INSTALL_PATH})
-  else()
-    install(TARGETS ${ARGN})
-  endif()
-
-  set(isPackage 0)
-  unset(__package)
-  unset(__target)
-  foreach(e ${ARGN})
-    if(NOT DEFINED __target)
-      set(__target "${e}")
-    endif()
-    if(isPackage EQUAL 1)
-      set(__package "${e}")
-      break()
-    endif()
-    if(e STREQUAL "EXPORT")
-      set(isPackage 1)
-    endif()
-  endforeach()
-
-  if(DEFINED __package)
-    list(APPEND ${__package}_TARGETS ${__target})
-    set(${__package}_TARGETS "${${__package}_TARGETS}" CACHE INTERNAL "List of ${__package} targets")
-  endif()
-
-  if(MSVS)
-    if(NOT INSTALL_IGNORE_PDB AND
-        (INSTALL_PDB OR
-          (INSTALL_CREATE_DISTRIB AND NOT BUILD_SHARED_LIBS)
-        ))
-      set(__target "${ARGV0}")
-
-      set(isArchive 0)
-      set(isDst 0)
-      unset(__dst)
-      foreach(e ${ARGN})
-        if(isDst EQUAL 1)
-          set(__dst "${e}")
-          break()
-        endif()
-        if(isArchive EQUAL 1 AND e STREQUAL "DESTINATION")
-          set(isDst 1)
-        endif()
-        if(e STREQUAL "ARCHIVE")
-          set(isArchive 1)
-        else()
-          set(isArchive 0)
-        endif()
-      endforeach()
-
-#      message(STATUS "Process ${__target} dst=${__dst}...")
-      if(DEFINED __dst)
-        # If CMake version is >=3.1.0 or <2.8.12.
-        if(NOT CMAKE_VERSION VERSION_LESS 3.1.0 OR CMAKE_VERSION VERSION_LESS 2.8.12)
-          get_target_property(fname ${__target} LOCATION_DEBUG)
-          if(fname MATCHES "\\.lib$")
-            string(REGEX REPLACE "\\.lib$" ".pdb" fname "${fname}")
-            install(FILES "${fname}" DESTINATION "${__dst}" CONFIGURATIONS Debug OPTIONAL)
-          endif()
-
-          get_target_property(fname ${__target} LOCATION_RELEASE)
-          if(fname MATCHES "\\.lib$")
-            string(REGEX REPLACE "\\.lib$" ".pdb" fname "${fname}")
-            install(FILES "${fname}" DESTINATION "${__dst}" CONFIGURATIONS Release OPTIONAL)
-          endif()
-        else()
-          # CMake 2.8.12 broke PDB support for STATIC libraries from MSVS, fix was introduced in CMake 3.1.0.
-          message(WARNING "PDB's are not supported from this version of CMake, use CMake version later then 3.1.0 or before 2.8.12.")
-        endif()
-      endif()
-    endif()
-  endif()
-endfunction()
-
 
 # read set of version defines from the header file
 macro(geo_parse_header FILENAME FILE_VAR)
@@ -868,342 +694,10 @@ macro(geo_parse_pkg LIBNAME PKG_PATH SCOPE)
   endif()
 endmacro()
 
-################################################################################################
-# short command to setup source group
-function(geo_source_group group)
-  if(BUILD_opencv_world AND OPENCV_MODULE_${the_module}_IS_PART_OF_WORLD)
-    set(group "${the_module}\\${group}")
-  endif()
-  cmake_parse_arguments(SG "" "DIRBASE" "GLOB;GLOB_RECURSE;FILES" ${ARGN})
-  set(files "")
-  if(SG_FILES)
-    list(APPEND files ${SG_FILES})
-  endif()
-  if(SG_GLOB)
-    file(GLOB srcs ${SG_GLOB})
-    list(APPEND files ${srcs})
-  endif()
-  if(SG_GLOB_RECURSE)
-    file(GLOB_RECURSE srcs ${SG_GLOB_RECURSE})
-    list(APPEND files ${srcs})
-  endif()
-  if(SG_DIRBASE)
-    foreach(f ${files})
-      file(RELATIVE_PATH fpart "${SG_DIRBASE}" "${f}")
-      if(fpart MATCHES "^\\.\\.")
-        message(AUTHOR_WARNING "Can't detect subpath for source_group command: Group=${group} FILE=${f} DIRBASE=${SG_DIRBASE}")
-        set(fpart "")
-      else()
-        get_filename_component(fpart "${fpart}" PATH)
-        if(fpart)
-          set(fpart "/${fpart}") # add '/'
-          string(REPLACE "/" "\\" fpart "${fpart}")
-        endif()
-      endif()
-      source_group("${group}${fpart}" FILES ${f})
-    endforeach()
-  else()
-    source_group(${group} FILES ${files})
-  endif()
-endfunction()
-
-macro(__geo_push_target_link_libraries)
-  if(NOT TARGET ${target})
-    if(NOT DEFINED OPENCV_MODULE_${target}_LOCATION)
-      message(FATAL_ERROR "geo_target_link_libraries: invalid target: '${target}'")
-    endif()
-    set(OPENCV_MODULE_${target}_LINK_DEPS ${OPENCV_MODULE_${target}_LINK_DEPS} ${ARGN} CACHE INTERNAL "" FORCE)
-  else()
-    target_link_libraries(${target} ${ARGN})
-  endif()
-endmacro()
-
-function(geo_target_link_libraries target)
-  set(LINK_DEPS ${ARGN})
-  _geo_fix_target(target)
-  set(LINK_MODE "LINK_PRIVATE")
-  set(LINK_PENDING "")
-  foreach(dep ${LINK_DEPS})
-    if(" ${dep}" STREQUAL " ${target}")
-      # prevent "link to itself" warning (world problem)
-    elseif(" ${dep}" STREQUAL " LINK_PRIVATE" OR " ${dep}" STREQUAL "LINK_PUBLIC")
-      if(NOT LINK_PENDING STREQUAL "")
-        __geo_push_target_link_libraries(${LINK_MODE} ${LINK_PENDING})
-        set(LINK_PENDING "")
-        set(LINK_MODE "${dep}")
-      endif()
-    else()
-      if(BUILD_opencv_world)
-        if(OPENCV_MODULE_${dep}_IS_PART_OF_WORLD)
-          set(dep opencv_world)
-        endif()
-      endif()
-      list(APPEND LINK_PENDING "${dep}")
-    endif()
-  endforeach()
-  if(NOT LINK_PENDING STREQUAL "")
-    __geo_push_target_link_libraries(${LINK_MODE} ${LINK_PENDING})
-  endif()
-endfunction()
-
-function(geo_target_compile_definitions target)
-  _geo_fix_target(target)
-  target_compile_definitions(${target} ${ARGN})
-endfunction()
-
-
-function(_geo_append_target_includes target)
-  if(DEFINED OCV_TARGET_INCLUDE_DIRS_${target})
-    target_include_directories(${target} PRIVATE ${OCV_TARGET_INCLUDE_DIRS_${target}})
-    if (TARGET ${target}_object)
-      target_include_directories(${target}_object PRIVATE ${OCV_TARGET_INCLUDE_DIRS_${target}})
-    endif()
-    if(OPENCV_DEPENDANT_TARGETS_${target})
-      foreach(t ${OPENCV_DEPENDANT_TARGETS_${target}})
-        target_include_directories(${t} PRIVATE ${OCV_TARGET_INCLUDE_DIRS_${target}})
-      endforeach()
-    endif()
-    unset(OCV_TARGET_INCLUDE_DIRS_${target} CACHE)
-  endif()
-endfunction()
-
-function(geo_add_executable target)
-  add_executable(${target} ${ARGN})
-  _geo_append_target_includes(${target})
-endfunction()
-
-function(geo_add_library target)
-  if(HAVE_CUDA AND ARGN MATCHES "\\.cu")
-    geo_include_directories(${CUDA_INCLUDE_DIRS})
-    geo_cuda_compile(cuda_objs ${ARGN})
-    set(OPENCV_MODULE_${target}_CUDA_OBJECTS ${cuda_objs} CACHE INTERNAL "Compiled CUDA object files")
-  endif()
-
-  add_library(${target} ${ARGN} ${cuda_objs})
-
-  # Add OBJECT library (added in cmake 2.8.8) to use in compound modules
-  if (NOT CMAKE_VERSION VERSION_LESS "2.8.8" AND OPENCV_ENABLE_OBJECT_TARGETS
-      AND NOT OPENCV_MODULE_${target}_CHILDREN
-      AND NOT OPENCV_MODULE_${target}_CLASS STREQUAL "BINDINGS"
-      AND NOT ${target} STREQUAL "opencv_ts"
-      AND (NOT BUILD_opencv_world OR NOT HAVE_CUDA)
-    )
-    set(sources ${ARGN})
-    geo_list_filterout(sources "\\\\.(cl|inc|cu)$")
-    add_library(${target}_object OBJECT ${sources})
-    set_target_properties(${target}_object PROPERTIES
-      EXCLUDE_FROM_ALL True
-      EXCLUDE_FROM_DEFAULT_BUILD True
-      POSITION_INDEPENDENT_CODE True
-      )
-    if (ENABLE_SOLUTION_FOLDERS)
-      set_target_properties(${target}_object PROPERTIES FOLDER "object_libraries")
-    endif()
-    unset(sources)
-  endif()
-
-  if(APPLE_FRAMEWORK AND BUILD_SHARED_LIBS)
-    message(STATUS "Setting Apple target properties for ${target}")
-
-    set(CMAKE_SHARED_LIBRARY_RUNTIME_C_FLAG 1)
-
-    set_target_properties(${target} PROPERTIES
-      FRAMEWORK TRUE
-      MACOSX_FRAMEWORK_IDENTIFIER org.opencv
-      MACOSX_FRAMEWORK_INFO_PLIST ${CMAKE_BINARY_DIR}/ios/Info.plist
-      # "current version" in semantic format in Mach-O binary file
-      VERSION ${OPENCV_LIBVERSION}
-      # "compatibility version" in semantic format in Mach-O binary file
-      SOVERSION ${OPENCV_LIBVERSION}
-      INSTALL_RPATH ""
-      INSTALL_NAME_DIR "@rpath"
-      BUILD_WITH_INSTALL_RPATH 1
-      LIBRARY_OUTPUT_NAME "opencv2"
-      XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2"
-      #PUBLIC_HEADER "${OPENCV_CONFIG_FILE_INCLUDE_DIR}/cvconfig.h"
-      #XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "iPhone Developer"
-    )
-  endif()
-
-  _geo_append_target_includes(${target})
-endfunction()
-
-
 macro(geo_get_libname var_name)
   get_filename_component(__libname "${ARGN}" NAME)
   string(REGEX REPLACE "^lib(.+).(a|so)(.[.0-9]+)?$" "\\1" __libname "${__libname}")
   set(${var_name} "${__libname}")
-endmacro()
-
-# build the list of opencv libs and dependencies for all modules
-#  _modules - variable to hold list of all modules
-#  _extra - variable to hold list of extra dependencies
-#  _3rdparty - variable to hold list of prebuilt 3rdparty libraries
-macro(geo_get_all_libs _modules _extra _3rdparty)
-  set(${_modules} "")
-  set(${_extra} "")
-  set(${_3rdparty} "")
-  foreach(m ${OPENCV_MODULES_PUBLIC})
-    if(TARGET ${m})
-      get_target_property(deps ${m} INTERFACE_LINK_LIBRARIES)
-      if(NOT deps)
-        set(deps "")
-      endif()
-    else()
-      set(deps "")
-    endif()
-    set(_rev_deps "${deps};${m}")
-    geo_list_reverse(_rev_deps)
-    foreach (dep ${_rev_deps})
-      if(DEFINED OPENCV_MODULE_${dep}_LOCATION)
-        list(INSERT ${_modules} 0 ${dep})
-      endif()
-    endforeach()
-    foreach (dep ${deps} ${OPENCV_LINKER_LIBS})
-      if (NOT DEFINED OPENCV_MODULE_${dep}_LOCATION)
-        if(dep MATCHES "^\\$<LINK_ONLY:([^>]+)>$")
-          set(dep "${CMAKE_MATCH_1}")
-        endif()
-        if(dep MATCHES "^\\$<")
-          message(WARNING "Unexpected CMake generator expression: ${dep}")
-        endif()
-        if (TARGET ${dep})
-          get_target_property(_type ${dep} TYPE)
-          if(_type STREQUAL "STATIC_LIBRARY" AND BUILD_SHARED_LIBS)
-            # nothing
-          else()
-            get_target_property(_output ${dep} IMPORTED_LOCATION)
-            if(NOT _output)
-              get_target_property(_output ${dep} ARCHIVE_OUTPUT_DIRECTORY)
-              get_target_property(_output_name ${dep} OUTPUT_NAME)
-              if(NOT _output_name)
-                set(_output_name "${dep}")
-              endif()
-            else()
-              get_filename_component(_output_name "${_output}" NAME)
-            endif()
-            string(FIND "${_output}" "${CMAKE_BINARY_DIR}" _POS)
-            if (_POS EQUAL 0)
-              geo_get_libname(_libname "${_output_name}")
-              list(INSERT ${_3rdparty} 0 ${dep})
-            else()
-              if(_output)
-                list(INSERT ${_extra} 0 ${_output})
-              else()
-                list(INSERT ${_extra} 0 ${dep})
-              endif()
-            endif()
-          endif()
-        else()
-          list(INSERT ${_extra} 0 ${dep})
-        endif()
-      endif()
-    endforeach()
-  endforeach()
-
-  geo_list_filterout(${_modules} "^[\$]<")
-  geo_list_filterout(${_3rdparty} "^[\$]<")
-  geo_list_filterout(${_extra} "^[\$]<")
-
-  # convert CMake lists to makefile literals
-  foreach(lst ${_modules} ${_3rdparty} ${_extra})
-    geo_list_unique(${lst})
-    geo_list_reverse(${lst})
-  endforeach()
-endmacro()
-
-
-function(geo_add_test_from_target test_name test_kind the_target)
-  if(CMAKE_VERSION VERSION_GREATER "2.8" AND NOT CMAKE_CROSSCOMPILING)
-    if(NOT "${test_kind}" MATCHES "^(Accuracy|Performance|Sanity)$")
-      message(FATAL_ERROR "Unknown test kind : ${test_kind}")
-    endif()
-    if(NOT TARGET "${the_target}")
-      message(FATAL_ERROR "${the_target} is not a CMake target")
-    endif()
-
-    string(TOLOWER "${test_kind}" test_kind_lower)
-    set(test_report_dir "${CMAKE_BINARY_DIR}/test-reports/${test_kind_lower}")
-    file(MAKE_DIRECTORY "${test_report_dir}")
-
-    add_test(NAME "${test_name}"
-      COMMAND "${the_target}"
-              "--gtest_output=xml:${the_target}.xml"
-              ${ARGN})
-
-    set_tests_properties("${test_name}" PROPERTIES
-      LABELS "${OPENCV_MODULE_${the_module}_LABEL};${test_kind}"
-      WORKING_DIRECTORY "${test_report_dir}")
-
-    if(OPENCV_TEST_DATA_PATH)
-      set_tests_properties("${test_name}" PROPERTIES
-        ENVIRONMENT "OPENCV_TEST_DATA_PATH=${OPENCV_TEST_DATA_PATH}")
-    endif()
-  endif()
-endfunction()
-
-macro(geo_add_testdata basedir dest_subdir)
-  if(BUILD_TESTS)
-    if(NOT CMAKE_CROSSCOMPILING AND NOT INSTALL_TESTS)
-      file(COPY ${basedir}/
-           DESTINATION ${CMAKE_BINARY_DIR}/${OPENCV_TEST_DATA_INSTALL_PATH}/${dest_subdir}
-           ${ARGN}
-      )
-    endif()
-    if(INSTALL_TESTS)
-      install(DIRECTORY ${basedir}/
-              DESTINATION ${OPENCV_TEST_DATA_INSTALL_PATH}/${dest_subdir}
-              COMPONENT "tests"
-              ${ARGN}
-      )
-    endif()
-  endif()
-endmacro()
-
-macro(geo_generate_vs_version_file DESTINATION)
-  cmake_parse_arguments(VS_VER "" "NAME;FILEDESCRIPTION;FILEVERSION;INTERNALNAME;COPYRIGHT;ORIGINALFILENAME;PRODUCTNAME;PRODUCTVERSION;COMMENTS;FILEVERSION_QUAD;PRODUCTVERSION_QUAD" "" ${ARGN})
-
-  macro(__vs_ver_update_variable name)
-    if(VS_VER_NAME AND DEFINED OPENCV_${VS_VER_NAME}_VS_VER_${name})
-      set(OPENCV_VS_VER_${name} "${OPENCV_${VS_VER_NAME}_VS_VER_${name}}")
-    elseif(VS_VER_${name})
-      set(OPENCV_VS_VER_${name} "${VS_VER_${name}}")
-    endif()
-  endmacro()
-
-  __vs_ver_update_variable(FILEVERSION_QUAD)
-  __vs_ver_update_variable(PRODUCTVERSION_QUAD)
-
-  macro(__vs_ver_update_str_variable name)
-    if(VS_VER_NAME AND DEFINED OPENCV_${VS_VER_NAME}_VS_VER_${name})
-      set(OPENCV_VS_VER_${name}_STR "${OPENCV_${VS_VER_NAME}_VS_VER_${name}}")
-    elseif(VS_VER_${name})
-      set(OPENCV_VS_VER_${name}_STR "${VS_VER_${name}}")
-    endif()
-  endmacro()
-
-  __vs_ver_update_str_variable(FILEDESCRIPTION)
-  __vs_ver_update_str_variable(FILEVERSION)
-  __vs_ver_update_str_variable(INTERNALNAME)
-  __vs_ver_update_str_variable(COPYRIGHT)
-  __vs_ver_update_str_variable(ORIGINALFILENAME)
-  __vs_ver_update_str_variable(PRODUCTNAME)
-  __vs_ver_update_str_variable(PRODUCTVERSION)
-  __vs_ver_update_str_variable(COMMENTS)
-
-  if(OPENCV_VS_VER_COPYRIGHT_STR)
-    set(OPENCV_VS_VER_HAVE_COPYRIGHT_STR 1)
-  else()
-    set(OPENCV_VS_VER_HAVE_COPYRIGHT_STR 0)
-  endif()
-
-  if(OPENCV_VS_VER_COMMENTS_STR)
-    set(OPENCV_VS_VER_HAVE_COMMENTS_STR 1)
-  else()
-    set(OPENCV_VS_VER_HAVE_COMMENTS_STR 0)
-  endif()
-
-  configure_file("${OpenCV_SOURCE_DIR}/cmake/templates/vs_version.rc.in" "${DESTINATION}" @ONLY)
 endmacro()
 
 macro(geo_cmake_script_append_var content_var)
