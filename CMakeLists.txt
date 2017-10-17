@@ -57,6 +57,8 @@ INCLUDE(cmake/DetectCXXCompiler.cmake)
 INCLUDE(cmake/AddFindPaths.cmake)
 #STATUS(${CMAKE_PREFIX_PATH})
 ### Find packages.
+SET(WITH_MPI 1)
+SET(WITH_GDAL 1)
 INCLUDE(cmake/FindPackages.cmake)
 
 ### Use statically or dynamically linked CRT? Default: dynamic
@@ -67,9 +69,6 @@ ENDIF(MSVC)
 SET(TAUDEM_SRC ${CMAKE_SOURCE_DIR}/src)
 SET(TAUDEM_EXT_SRC ${CMAKE_SOURCE_DIR}/src_ext)
 
-# GDAL_INCLUDE_DIR should after TAUDEM_SRC, since tiffIO.h both existed in the two dirs.
-#INCLUDE_DIRECTORIES(${TAUDEM_SRC} ${GDAL_INCLUDE_DIR} ${MPI_INCLUDE_PATH})
-# Adds include directories in such a way that directories from the TauDEM source tree go first.
 geo_include_directories(${GDAL_INCLUDE_DIR} ${MPI_INCLUDE_PATH})
 ADD_SUBDIRECTORY(${TAUDEM_SRC})
 ADD_SUBDIRECTORY(${TAUDEM_EXT_SRC})

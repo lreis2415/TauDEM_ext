@@ -53,4 +53,14 @@ IF(GEO_3RD_PARTY_ROOT)
           CACHE PATH "Path to root of GDAL software"
           )
   LIST(APPEND CMAKE_PREFIX_PATH ${GEO_GDAL_ROOT})
+  # mongo-c-driver.
+  FILE(GLOB DEFAULT_PATH ${GEO_3RD_PARTY_ROOT}/mongo-c-driver-*)
+  IF(NOT DEFAULT_PATH)
+    SET(DEFAULT_PATH ${GEO_3RD_PARTY_ROOT})
+  ENDIF()
+  SET(GEO_MONGOC_ROOT
+          ${DEFAULT_PATH}
+          CACHE PATH "Path to root of mongo-c-driver"
+          )
+  LIST(APPEND CMAKE_PREFIX_PATH ${GEO_MONGOC_ROOT})
 ENDIF()
