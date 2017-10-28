@@ -6,20 +6,14 @@
   Apr 8, 2015 
   
 */
-
-// include fundamental libraries
-#include <stdlib.h>
-#include <iostream>
-//#include <math.h>
-// include mpich and openmp 
-#include <mpi.h>
-//#include <omp.h>
 // include TauDEM header files
-#include "commonLib.h"
-//#include "linearpart.h"
-#include "createpart.h"
 #include "tiffIO.h"
+#include "linearpart.h"
+#include "createpart.h"
+// include algorithm header file
 #include "Curvature.h"
+// include fundamental libraries
+#include <iostream>
 
 using namespace std;
 

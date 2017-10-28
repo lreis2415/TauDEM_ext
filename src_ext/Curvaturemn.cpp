@@ -7,9 +7,9 @@
   
   changelog: 17-08-03  lj - update the command arguments
 */
-#include <stdio.h>
-#include <stdlib.h>
+// include TauDEM header files
 #include "commonLib.h"
+// include algorithm header file
 #include "Curvature.h"
 
 int main(int argc, char **argv)
