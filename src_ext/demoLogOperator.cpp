@@ -47,10 +47,13 @@ int logOperator(char *srcfile, char *destfile)
         int i, j;
         float tempV;
         // COMPUTING CODE BLOCK
-        for (j = 0; j < ny; j++)
+        for (j = 0; j < ny; j++)  // rows
         {
-            for (i = 0; i < nx; i++)
+            for (i = 0; i < nx; i++)  // cols
             {
+                if (src->isNodata(i, j)) {
+                    continue;
+                }
                 src->getData(i, j, tempV);
                 dest->setData(i, j, log(tempV));
             }
