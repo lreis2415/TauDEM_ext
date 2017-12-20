@@ -2,7 +2,7 @@
 #  Root CMake file for extended TauDEM.
 #
 #     Please from the off-tree build directory, invoke:
-#       $ cmake <path/to/TauDEM>
+#       $ cmake <path/to/TauDEM_ext>
 #
 #  Routine testing platforms and compilers include:
 #     1. Windows 10 with Visual Studio 2013, MSMPI-v8, GDAL-1.11.4
@@ -22,7 +22,7 @@ FATAL: In-source builds are not allowed.
 )
 ENDIF()
 CMAKE_MINIMUM_REQUIRED(VERSION 3.1 FATAL_ERROR)
-PROJECT(TauDEM CXX C)
+PROJECT(TauDEM_ext CXX C)
 
 ### Set default or specified installation directory.
 IF (INSTALL_PREFIX)
