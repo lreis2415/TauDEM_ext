@@ -39,6 +39,7 @@ email:  dtarb@usu.edu
 //  This software is distributed from http://hydrology.usu.edu/taudem/
 #ifndef COMMON_H
 #define COMMON_H
+#include <cstring>
 #include <cmath>
 #include <cfloat>
 #include <cstdint>
@@ -65,6 +66,7 @@ email:  dtarb@usu.edu
 #endif /* windows */
 #define MCW MPI_COMM_WORLD
 #define MAX_STRING_LENGTH 255
+#define MAXLN 4096
 
 //TODO: revisit these to see if they are used/needed
 //#define ABOVE 1
@@ -191,7 +193,7 @@ void Release2DArray(int row, T **&data)
 /*
  * \brief convert string to char*
  */
-char* convertStringToCharPtr(string s);
+char* convertStringToCharPtr(const std::string& s);
 /*
  *\brief Counting time for Cross-platform
  * more precisely than time.clock()
@@ -212,4 +214,3 @@ double TimeCounting();
 #endif /* MSVC */
 
 #endif /* COMMON_H */
-#endif

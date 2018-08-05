@@ -41,8 +41,7 @@ email:  dtarb@usu.edu
 
 #include "commonLib.h"
 #include "linearpart.h"
-#include <stdio.h>
-#include <string.h>
+#include <cstdio>
 #include <math.h>
 #include <cstddef>
 
@@ -486,7 +485,7 @@ void getlayerfail(OGRDataSourceH hDS1, char *outletsds, int outletslyr) {
     exit(1);
 }
 
-char* convertStringToCharPtr(string s){
+char* convertStringToCharPtr(const std::string& s){
     char *data;
     int len = s.length();
     data = (char *)malloc((len + 1)*sizeof(char));

@@ -21,10 +21,12 @@ int main(int argc, char **argv) {
         printf("the Usage with Specific file names option\n");
         goto errexit;
     }
-    if (argc > 2)
+    if (argc > 2) {
         i = 1;
-    } else {
+    }
+    else {
         i = 2;
+    }
     while (argc > i) {
         if (strcmp(argv[i], "-in") == 0) {
             i++;
