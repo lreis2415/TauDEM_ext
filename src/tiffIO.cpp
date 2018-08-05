@@ -44,10 +44,10 @@ email:  dtarb@usu.edu
 #include "gdal.h"
 #include "ogrsf_frmts.h"
 #include "ogr_api.h"
-// #include "tiffIO.h"  Part of commonLib.h
+#include "tiffIO.h"
 #include <ogr_spatialref.h>
 #include <math.h>
-#include "commonLib.h"
+//#include "commonLib.h"  //Part of tiffIO.h
 #include <iostream>
 
 using namespace std;
@@ -66,6 +66,7 @@ tiffIO::tiffIO(char *fname, DATA_TYPE newtype) {
     fh = GDALOpen(filename, GA_ReadOnly);
     if (fh == NULL) {
         printf("Error opening file %s.\n", fname);
+        fflush(stdout);
         MPI_Abort(MCW, 21);
     }
     hDriver = GDALGetDatasetDriver(fh);
@@ -145,33 +146,18 @@ tiffIO::tiffIO(char *fname, DATA_TYPE newtype) {
         }
     }
 
-
-
-
     //dxA=(dxc[totalY/2]<0.0) ? -dxc[totalY/2] : dxc[totalY/2] ;   //abs(dxc[totalY/2]);  //  DGT This is ugly but we encountered a compiler that the abs function rounded the results which introduced a bug
     //dyA=(dyc[totalY/2]<0.0) ? -dyc[totalY/2] : dyc[totalY/2] ;  //abs(dyc[totalY/2]);
     dxA = fabs(dxc[totalY / 2]);
     dyA = fabs(dyc[totalY / 2]);
     datatype = newtype;
-    if (datatype == SHORT_TYPE) {
-        nodata = new short;
-        *((short *) nodata) = (short) GDALGetRasterNoDataValue(bandh, NULL);
-
-    } else if (datatype == FLOAT_TYPE) {
-        nodata = new float;
-        *((float *) nodata) = (float) GDALGetRasterNoDataValue(bandh, NULL);
-
-    } else if (datatype == LONG_TYPE) {
-        nodata = new int32_t;
-        *((int32_t *) nodata) = (int32_t) GDALGetRasterNoDataValue(bandh, NULL);
-
-    }
-
+    // Per gdal.h header and internet searches GDALGetRasterNoDataValue is a double
+    nodata = GDALGetRasterNoDataValue(bandh, NULL); // noDatarefactor 11/18/17
 }
 
 //Copy constructor.  Requires datatype in addition to the object to copy from.
 
-tiffIO::tiffIO(char *fname, DATA_TYPE newtype, void *nd, const tiffIO &copy) {
+tiffIO::tiffIO(char *fname, DATA_TYPE newtype, double nd, const tiffIO &copy) {
     //MPI_Status status;
     //MPI_Offset mpiOffset;
 
@@ -186,16 +172,7 @@ tiffIO::tiffIO(char *fname, DATA_TYPE newtype, void *nd, const tiffIO &copy) {
     }
 
     datatype = newtype;
-    if (datatype == SHORT_TYPE) {
-        nodata = new short;
-        *((short *) nodata) = *((short *) nd);
-    } else if (datatype == FLOAT_TYPE) {
-        nodata = new float;
-        *((float *) nodata) = *((float *) nd);
-    } else if (datatype == LONG_TYPE) {
-        nodata = new int32_t;
-        *((int32_t *) nodata) = *((int32_t *) nd);
-    }
+    nodata = nd;  // noDatarefactor 11/18/17
 
     totalX = copy.totalX;
     totalY = copy.totalY;
@@ -219,7 +196,6 @@ tiffIO::tiffIO(char *fname, DATA_TYPE newtype, void *nd, const tiffIO &copy) {
 }
 
 tiffIO::~tiffIO() {
-
     delete[] dxc;
     delete[] dyc;
     dxc = NULL;
@@ -295,7 +271,8 @@ void tiffIO::write(long xstart, long ystart, long numRows, long numCols, void *s
         //if (isFileInititialized == 0) {
         hDriver = GDALGetDriverByName(driver_code[index]);
         if (hDriver == NULL) {
-            printf("driver is not available\n");
+            printf("GDAL driver is not available\n");
+            fflush(stdout);
             MPI_Abort(MPI_COMM_WORLD, 22);
         }
         // Set options
@@ -335,13 +312,7 @@ void tiffIO::write(long xstart, long ystart, long numRows, long numCols, void *s
         GDALSetGeoTransform(fh, adfGeoTransform);
 
         bandh = GDALGetRasterBand(fh, 1);
-        if (datatype == FLOAT_TYPE) {
-            GDALSetRasterNoDataValue(bandh, (double) *((float *) nodata));
-        } else if (datatype == SHORT_TYPE) {
-            GDALSetRasterNoDataValue(bandh, (double) *((short *) nodata));
-        } else if (datatype == LONG_TYPE) {
-            GDALSetRasterNoDataValue(bandh, (double) *((int32_t *) nodata));
-        }
+        GDALSetRasterNoDataValue(bandh, nodata);  // noDatarefactor 11/18/17
 
         //isFileInititialized = 1;
         //} else {

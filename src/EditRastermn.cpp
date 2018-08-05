@@ -45,57 +45,42 @@ email:  dtarb@usu.edu
 #include "commonLib.h"
 #include "tardemlib.h"
 
-int editraster(char *rasterfile, char *newfile, char *changefile);
+int editraster(char* rasterfile, char* newfile, char* changefile);
 
-int main(int argc,char **argv)  
-{
-   char rasterfile[MAXLN],changefile[MAXLN],newfile[MAXLN];
-   int i = 1;
-   if(argc <= 2) goto errexit;	
-	while (argc > i)
-	{
-		if (strcmp(argv[i], "-in") == 0)
-		{
-			i++;
-			if (argc > i)
-			{
-				strcpy(rasterfile, argv[i]);
-				i++;
-			}
-			else goto errexit;
-		}
-		else if (strcmp(argv[i], "-out") == 0)
-		{
-			i++;
-			if (argc > i)
-			{
-				strcpy(newfile, argv[i]);
-				i++;
-			}
-			else goto errexit;
-		}
-		else if (strcmp(argv[i], "-changes") == 0)
-		{
-			i++;
-			if (argc > i)
-			{
-				strcpy(changefile, argv[i]);
-				i++;
-			}
-			else goto errexit;
-		}
-		else goto errexit;
+int main(int argc, char** argv) {
+    char rasterfile[MAXLN], changefile[MAXLN], newfile[MAXLN];
+    int i = 1;
+    if (argc <= 2) goto errexit;
+    while (argc > i) {
+        if (strcmp(argv[i], "-in") == 0) {
+            i++;
+            if (argc > i) {
+                strcpy(rasterfile, argv[i]);
+                i++;
+            } else goto errexit;
+        } else if (strcmp(argv[i], "-out") == 0) {
+            i++;
+            if (argc > i) {
+                strcpy(newfile, argv[i]);
+                i++;
+            } else goto errexit;
+        } else if (strcmp(argv[i], "-changes") == 0) {
+            i++;
+            if (argc > i) {
+                strcpy(changefile, argv[i]);
+                i++;
+            } else goto errexit;
+        } else goto errexit;
 
-	}
-	int err;
-    if( (err=editraster(rasterfile, newfile, changefile)) != 0)
-        printf("Threshold Error %d\n",err);
+    }
+    int err;
+    if ((err = editraster(rasterfile, newfile, changefile)) != 0)
+        printf("Threshold Error %d\n", err);
 
-	return 0;
-   errexit:
-     printf("Editraster use:\n %s -in <filetochange>\n",argv[0]);
-     printf("-out <filetowrite> \n");
-     printf("-changes <file with change values (x,y,newvalue)> \n");
-     return 0; 
-} 
-   
+    return 0;
+errexit:
+    printf("Editraster use:\n %s -in <filetochange>\n", argv[0]);
+    printf("-out <filetowrite> \n");
+    printf("-changes <file with change values (x,y,newvalue)> \n");
+    return 0;
+}

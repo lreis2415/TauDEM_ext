@@ -45,6 +45,7 @@ email:  dtarb@usu.edu
 #include "ogr_api.h"
 #include "mpi.h"
 #include <algorithm>
+#include <queue>  // DGT 5/27/18
 
 #define MCW MPI_COMM_WORLD
 #define MAX_STRING_LENGTH 255
@@ -60,18 +61,14 @@ email:  dtarb@usu.edu
 #define NOTFINISHED 0
 #define FINISHED 1
 
-#define TDVERSION "5.3.7"
+#define TDVERSION "5.3.9"
 
 enum DATA_TYPE {
     SHORT_TYPE,
     LONG_TYPE,
-    FLOAT_TYPE,
-    DOUBLE_TYPE,
-    UNKNOWN_TYPE,
-    INVALID_DATA_TYPE = -1
+    FLOAT_TYPE
 };
 
-//TODO: revisit this structure to see where it is used
 struct node {
     int x;
     int y;
@@ -81,9 +78,8 @@ inline bool operator==(const node& n1, const node& n2)
     return (n1.x == n2.x) && (n1.y == n2.y);
 }
 const double PI = 3.14159265359;
-const short MISSINGSHORT = -32768;
-
-const long MISSINGLONG = -2147483647;
+const int16_t MISSINGSHORT = -32768;
+const int32_t MISSINGLONG = -2147483647;
 const float MISSINGFLOAT = -1 * FLT_MAX;
 const float MINEPS = 1E-5f;
 
@@ -98,7 +94,9 @@ const int d2[9] = {0, 0, -1, -1, -1, 0, 1, 1, 1};
 
 int nameadd(char *, char *, const char *);
 double prop(float a, int k, double dx1, double dy1);
-char *getLayername(char *inputogrfile);
+//char *getLayername(char *inputogrfile);
+// Chris George Suggestion
+void getLayername(char *inputogrfile, char *layername);
 const char *getOGRdrivername(char *datasrcnew);
 void getlayerfail(OGRDataSourceH hDS1, char *outletsds, int outletslyr);
 int readoutlets(char *outletsds,
@@ -119,14 +117,13 @@ int readoutlets(char *outletsds,
                 double *&y,
                 int *&id);
 
-#include <queue>
-#include "linearpart.h"
+// DGT 5/27/18  #include <queue>
+// DGT 5/27/18 #include "linearpart.h"
 
-bool pointsToMe(long col, long row, long ncol, long nrow, tdpartition *dirData);
+// DGT 5/27/18 bool pointsToMe(long col, long row, long ncol, long nrow, tdpartition *dirData);
 
 /* void initNeighborDinfup(tdpartition* neighbor,tdpartition* flowData,queue<node> *que,
 					  int nx,int ny,int useOutlets, int *outletsX,int *outletsY,long numOutlets);
 void initNeighborD8up(tdpartition* neighbor,tdpartition* flowData,queue<node> *que,
 					  int nx,int ny,int useOutlets, int *outletsX,int *outletsY,long numOutlets);  */
 #endif
-

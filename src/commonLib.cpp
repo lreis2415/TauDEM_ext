@@ -40,6 +40,7 @@ email:  dtarb@usu.edu
 
 
 #include "commonLib.h"
+#include "linearpart.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -153,6 +154,7 @@ void initNeighborDinfup(tdpartition *neighbor, tdpartition *flowData, queue <nod
         //TODO - consider copying this statement into other memory allocations
         if (bufferAbove == NULL || bufferBelow == NULL) {
             printf("Error allocating memory\n");
+            fflush(stdout);
             MPI_Abort(MCW, 5);
         }
 
@@ -262,17 +264,20 @@ void initNeighborD8up(tdpartition *neighbor, tdpartition *flowData, queue <node>
             for (i = 0; i < nx; i++) {
                 //Initialize neighbor count to no data, but then 0 if flow direction is defined
                 neighbor->setToNodata(i, j);
-                if (!flowData->isNodata(i, j)) {
-                    //Set contributing neighbors to 0
-                    neighbor->setData(i, j, (short) 0);
+                flowData->getData(i, j, tempShort);
+                if (tempShort >= 0 && tempShort <= 8) { // Flow direction data outside the range 1 to 8 effectively no data
+                    //Set contributing neighbors to 0 
+                    neighbor->setData(i, j, (short)0);
                     //Count number of contributing neighbors
                     for (k = 1; k <= 8; k++) {
                         in = i + d1[k];
                         jn = j + d2[k];
                         if (flowData->hasAccess(in, jn) && !flowData->isNodata(in, jn)) {
                             flowData->getData(in, jn, tempShort);
-                            if (tempShort - k == 4 || tempShort - k == -4) {
-                                neighbor->addToData(i, j, (short) 1);
+                            if (tempShort >= 0 && tempShort <= 8) { // Flow direction data outside the range 1 to 8 effectively no data
+                                if (tempShort - k == 4 || tempShort - k == -4) {
+                                    neighbor->addToData(i, j, (short)1);
+                                }
                             }
                         }
                     }
@@ -306,6 +311,7 @@ void initNeighborD8up(tdpartition *neighbor, tdpartition *flowData, queue <node>
         //TODO - consider copying this statement into other memory allocations
         if (bufferAbove == NULL || bufferBelow == NULL) {
             printf("Error allocating memory\n");
+            fflush(stdout);
             MPI_Abort(MCW, 5);
         }
 
@@ -332,20 +338,24 @@ void initNeighborD8up(tdpartition *neighbor, tdpartition *flowData, queue <node>
                         jn = j + d2[k];
                         if (flowData->hasAccess(in, jn) && !flowData->isNodata(in, jn)) {
                             flowData->getData(in, jn, tempShort);
-                            //  Does neighbor drain to me
-                            if (tempShort - k == 4 || tempShort - k == -4) {
-                                if (jn == -1) {
-                                    bufferAbove[countA] = in;
-                                    countA += 1;
-                                } else if (jn == ny) {
-                                    bufferBelow[countB] = in;
-                                    countB += 1;
-                                } else {
-                                    temp.x = in;
-                                    temp.y = jn;
-                                    toBeEvaled.push(temp);
+                            if (tempShort >= 0 && tempShort <= 8) { // Flow direction data outside the range 1 to 8 effectively no data
+                                //  Does neighbor drain to me
+                                if (tempShort - k == 4 || tempShort - k == -4) {
+                                    if (jn == -1) {
+                                        bufferAbove[countA] = in;
+                                        countA += 1;
+                                    }
+                                    else if (jn == ny) {
+                                        bufferBelow[countB] = in;
+                                        countB += 1;
+                                    }
+                                    else {
+                                        temp.x = in;
+                                        temp.y = jn;
+                                        toBeEvaled.push(temp);
+                                    }
+                                    neighbor->addToData(i, j, (short)1);
                                 }
-                                neighbor->addToData(i, j, (short) 1);
                             }
                         }
                     }
@@ -388,20 +398,23 @@ void initNeighborD8up(tdpartition *neighbor, tdpartition *flowData, queue <node>
     }
 }
 
+// DGT 5/27/18 Remove from common lib and put in files of functions that use this to resolve header dependency on linearpart.h
 //returns true iff cell at [nrow][ncol] points to cell at [row][col]
-bool pointsToMe(long col, long row, long ncol, long nrow, tdpartition *dirData) {
-    short d;
-    if (!dirData->hasAccess(ncol, nrow) || dirData->isNodata(ncol, nrow)) { return false; }
-    d = dirData->getData(ncol, nrow, d);
-    if (nrow + d2[d] == row && ncol + d1[d] == col) {
-        return true;
-    }
-    return false;
-}
+//bool pointsToMe(long col, long row, long ncol, long nrow, tdpartition *dirData) {
+//    short d;
+//    if (!dirData->hasAccess(ncol, nrow) || dirData->isNodata(ncol, nrow)) { return false; }
+//    d = dirData->getData(ncol, nrow, d);
+//    if (nrow + d2[d] == row && ncol + d1[d] == col) {
+//        return true;
+//    }
+//    return false;
+//}
 
 //get extension from OGR vector file
 //get layername if not provided by user
-char *getLayername(char *inputogrfile) {
+// Chris George suggestion for layername handling
+//char *getLayername(char *inputogrfile)
+void getLayername(char *inputogrfile, char *layername) {
     std::string filenamewithpath;
     filenamewithpath = inputogrfile;
     size_t found = filenamewithpath.find_last_of("/\\");
@@ -410,32 +423,31 @@ char *getLayername(char *inputogrfile) {
     const char *filename = filenamewithoutpath.c_str(); // convert string to char
     const char *ext;
     ext = strrchr(filename, '.'); // getting extension
-    char layername[MAXLN];
+    // char layername[MAXLN];
     size_t len = strlen(filename);
     size_t len1 = strlen(ext);
     memcpy(layername, filename, len - len1);
     layername[len - len1] = 0;
     printf("%s ", layername);
-    return layername;
+    return;
+    // return layername;
 }
 //
 
 //get ogr driver index for writing shapefile
 
 const char *getOGRdrivername(char *datasrcnew) {
-    const char
-        *ogrextension_list[5] = {".sqlite", ".shp", ".json", ".kml", ".geojson"};  // extension list --can add more
-    const char
-        *ogrdriver_code[5] = {"SQLite", "ESRI Shapefile", "GeoJSON", "KML", "GeoJSON"};   //  code list -- can add more
+    const char *ogrextension_list[5] = {".sqlite", ".shp", ".json", ".kml", ".geojson"};
+    // extension list --can add more
+    const char *ogrdriver_code[5] = {"SQLite", "ESRI Shapefile", "GeoJSON", "KML", "GeoJSON"};
+    // code list -- can add more
     size_t extension_num = 5;
     char *ext;
     int index = 1; //default is ESRI shapefile
     ext = strrchr(datasrcnew, '.');
     if (!ext) {
-
         index = 1; //  if no extension then writing will be ESRI shapefile
     } else {
-
         //  convert to lower case for matching
         for (int i = 0; ext[i]; i++) {
             ext[i] = tolower(ext[i]);

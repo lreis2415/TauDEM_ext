@@ -206,7 +206,6 @@ int catchoutlets(char *pfile, char *streamnetsrc, char *outletsdatasrc, double m
 			}
 
 			if (hDSpt != NULL) {
-
 				//hLayershmoved = OGR_DS_CreateLayer( hDSshmoved, outletmovedlayer, hSRSRaster, wkbPoint, NULL ); // create layer for moved outlet, where raster layer spatial reference is used fro shapefile
 				if (strlen(outletsdatasrc) == 0) {  //Code not ready as outletdatasrc should never be 0
 					//char * layernamept;
@@ -216,18 +215,15 @@ int catchoutlets(char *pfile, char *streamnetsrc, char *outletsdatasrc, double m
 					getLayername(outletsdatasrc,layernamept); // get layer name which is file name without extension
 					hLayerpt = OGR_DS_CreateLayer(hDSpt, layernamept, hSRSRaster, wkbPoint, NULL);
 				}
-
 				else {
 					hLayerpt = OGR_DS_CreateLayer(hDSpt, outletsdatasrc, hSRSRaster, wkbPoint, NULL);
 				}// provide same spatial reference as raster in point file file
 
-				if (hLayerpt == NULL)
-				{
+				if (hLayerpt == NULL) {
 					printf("warning: Layer creation failed.\n");
 					//exit( 1 );
 				}
 			}
-
 
 			int lyrno = 0;
 			hLayer = OGR_DS_GetLayer(hDS, lyrno);
@@ -273,8 +269,7 @@ int catchoutlets(char *pfile, char *streamnetsrc, char *outletsdatasrc, double m
 			gwcount = gwstartno;  // Initialize count
 
 			OGR_L_ResetReading(hLayer);
-			while ((hFeature = OGR_L_GetNextFeature(hLayer)) != NULL)
-			{
+			while ((hFeature = OGR_L_GetNextFeature(hLayer)) != NULL) {
 				//  Here pick the downstream end of a link that is an outlet.  Otherwise pick the upstream end 
 				//  skipping links without any upstream
 				int32_t linkno= OGR_F_GetFieldAsInteger(hFeature, linkfield);
@@ -282,8 +277,7 @@ int catchoutlets(char *pfile, char *streamnetsrc, char *outletsdatasrc, double m
 				int32_t uslinkno1 = OGR_F_GetFieldAsInteger(hFeature, uslink1field);
 				int32_t uslinkno2 = OGR_F_GetFieldAsInteger(hFeature, uslink2field);
 				// Only do for outlet or if it has no links upstream
-				if(dslinkno < 0  || uslinkno1 >= 0 || uslinkno2 >= 0)   //  Here pick the downstream end
-				{
+				if(dslinkno < 0  || uslinkno1 >= 0 || uslinkno2 >= 0) { //  Here pick the downstream end
 					linknos[istream] = linkno;
 					allinks[istream].dslinkno = dslinkno;
 					allinks[istream].uslinkno1 = uslinkno1;
@@ -292,13 +286,11 @@ int catchoutlets(char *pfile, char *streamnetsrc, char *outletsdatasrc, double m
 					hGeometry = OGR_F_GetGeometryRef(hFeature);
 					int num_points = OGR_G_GetPointCount(hGeometry);
 					double X1, Y1, Z1;
-					if (dslinkno < 0) // points are digitized down to up so downstream end use first entered
-					{
+					if (dslinkno < 0) { // points are digitized down to up so downstream end use first entered
 						OGR_G_GetPoint(hGeometry, 0, &X1, &Y1, &Z1);
 						allinks[istream].doutend = OGR_F_GetFieldAsDouble(hFeature, doutendfield);  // Note here end field
 					}
-					else  // use last
-					{
+					else { // use last
 						OGR_G_GetPoint(hGeometry, num_points-1, &X1, &Y1, &Z1);  
 						allinks[istream].doutend = OGR_F_GetFieldAsDouble(hFeature, doutstartfield); // Note here start field
 					}
@@ -312,16 +304,13 @@ int catchoutlets(char *pfile, char *streamnetsrc, char *outletsdatasrc, double m
 			nstreams = istream;  // Reset as we do not work with every stream
 			// For parallel version here share allinks or perhaps we are lucky and parallel OGR reading is OK
 			// Now loop over links recursively evaluating distances
-			for (istream = 0; istream < nstreams; istream++)
-			{
-				if (allinks[istream].dslinkno < 0) // Here this is a down end
-				{
+			for (istream = 0; istream < nstreams; istream++) {
+				if (allinks[istream].dslinkno < 0) { // Here this is a down end
 					int32_t gx, gy, tx, ty, nextx, nexty;
 					double geoX, geoY;
 					p.geoToGlobalXY(allinks[istream].x, allinks[istream].y, gx, gy);
 					flowData->globalToLocal(gx, gy, tx, ty);
-					if (flowData->isInPartition(tx, ty))
-					{
+					if (flowData->isInPartition(tx, ty)) {
 						short dirn;
 						dirn = flowData->getData(tx, ty, dirn);
 						if (dirn >= 1 && dirn <= 8) {
@@ -358,74 +347,6 @@ int catchoutlets(char *pfile, char *streamnetsrc, char *outletsdatasrc, double m
 					}
 				}
 			}
-
-
-
-			/*			//Create a new feature corresponding to each existing feature
-						OGRFeatureH hFeaturept = OGR_F_Create(OGR_L_GetLayerDefn(hLayerpt)); // create new feature with null fields and no geometry
-
-						// Copy the field values from the old field to the new field
-						int iField;
-
-						for (iField = 0; iField < OGR_FD_GetFieldCount(hFDefn); iField++)
-						{
-							OGRFieldDefnH hFieldDefn = OGR_FD_GetFieldDefn(hFDefn, iField);
-
-							if (OGR_Fld_GetType(hFieldDefn) == OFTInteger)
-							{
-								printf("%d,", OGR_F_GetFieldAsInteger(hFeature, iField));
-								int val1 = OGR_F_GetFieldAsInteger(hFeature, iField);
-								OGR_F_SetFieldInteger(hFeaturept, iField, val1);
-							}
-							else if (OGR_Fld_GetType(hFieldDefn) == OFTReal)
-							{
-								printf("%.3f,", OGR_F_GetFieldAsDouble(hFeature, iField));
-								double val2 = OGR_F_GetFieldAsDouble(hFeature, iField);
-								OGR_F_SetFieldDouble(hFeaturept, iField, val2);
-							}
-							else if (OGR_Fld_GetType(hFieldDefn) == OFTString)
-							{
-								printf("%s,", OGR_F_GetFieldAsString(hFeature, iField));
-								const char *val3 = OGR_F_GetFieldAsString(hFeature, iField);
-								OGR_F_SetFieldString(hFeaturept, iField, val3);
-							}
-							else
-							{
-								printf("%s,", OGR_F_GetFieldAsString(hFeature, iField));
-								const char *val4 = OGR_F_GetFieldAsString(hFeature, iField);
-								OGR_F_SetFieldString(hFeaturept, iField, val4);
-							}
-
-						}
-
-						OGRGeometryH hGeometry, hGeometrypt;
-
-						hGeometry = OGR_F_GetGeometryRef(hFeature);
-						int num_points = OGR_G_GetPointCount(hGeometry);
-						double X1, Y1, Z1;
-						if (num_points < 2) {
-
-						}
-						for (int ii = 0; ii < num_points; ii++) {
-							// Get the point!
-							OGR_G_GetPoint(hGeometry, ii, &X1, &Y1, &Z1);
-							printf("%d, %lf, %lf,%lf\n",ii,X1,Y1,Z1);
-						}
-						hGeometrypt = OGR_G_CreateGeometry(wkbPoint);// create geometry
-						OGR_G_SetPoint_2D(hGeometrypt, 0, X1, Y1);  // Last value read
-						OGR_F_SetGeometry(hFeaturept, hGeometrypt);
-						OGR_G_DestroyGeometry(hGeometrypt);
-						//  Now create the feature in the layer giving an error if failed
-						if (OGR_L_CreateFeature(hLayerpt, hFeaturept) != OGRERR_NONE)
-						{
-							printf(" warning: Failed to create feature in shapefile.\n");
-							//exit( 1 );
-						}
-						// destroy in memory features no longer needed
-						OGR_F_Destroy(hFeaturept);
-						OGR_F_Destroy(hFeature);
-						*/
-
 			OGR_DS_Destroy(hDS);
 		}
 	}MPI_Finalize();

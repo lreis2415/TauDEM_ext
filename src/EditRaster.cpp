@@ -48,122 +48,121 @@ email:  dtarb@usu.edu
 using namespace std;
 
 /*********************************************************************/
-int readline(FILE *fp, char *fline)
-{
-	int i = 0, ch;
+int readline(FILE* fp, char* fline) {
+    int i = 0, ch;
 
-	for (i = 0; i< MAXLN; i++)
-	{
-		ch = getc(fp);
+    for (i = 0; i < MAXLN; i++) {
+        ch = getc(fp);
 
-		if (ch == EOF) { *(fline + i) = '\0'; return(EOF); }
-		else          *(fline + i) = (char)ch;
+        if (ch == EOF) {
+            *(fline + i) = '\0';
+            return (EOF);
+        } else *(fline + i) = (char)ch;
 
-		if ((char)ch == '\n') { *(fline + i) = '\0'; return(0); }
+        if ((char)ch == '\n') {
+            *(fline + i) = '\0';
+            return (0);
+        }
 
-	}
-	return(1);
+    }
+    return 1;
 }
 
 
-int editraster(char *rasterfile, char *newfile, char *changefile)
-{
-	MPI_Init(NULL,NULL);{
+int editraster(char* rasterfile, char* newfile, char* changefile) {
+    MPI_Init(NULL,NULL);
+    {
+        //Only used for timing
+        int rank, size;
+        MPI_Comm_rank(MCW, &rank);
+        MPI_Comm_size(MCW, &size);
+        if (rank == 0)printf("Editraster version %s\n",TDVERSION);
 
-	//Only used for timing
-	int rank,size;
-	MPI_Comm_rank(MCW,&rank);
-	MPI_Comm_size(MCW,&size);
-	if(rank==0)printf("Editraster version %s\n",TDVERSION);
+        double begin, end;
 
-	double begin,end;
+        //Create tiff object, read and store header info
+        tiffIO rasterIO(rasterfile, SHORT_TYPE);
+        long totalX = rasterIO.getTotalX();
+        long totalY = rasterIO.getTotalY();
+        double dxA = rasterIO.getdxA();
+        double dyA = rasterIO.getdyA();
+        if (rank == 0) {
+            //float timeestimate=(1e-7*totalX*totalY/pow((double) size,1))/60+1;  // Time estimate in minutes
+            ////fprintf(stderr,"This run may take on the order of %.0f minutes to complete.\n",timeestimate);
+            //fprintf(stderr,"Time estimate not available.\n");
+            //fflush(stderr);
+        }
 
-	//Create tiff object, read and store header info
-	tiffIO rasterIO(rasterfile , SHORT_TYPE);
-	long totalX = rasterIO.getTotalX();
-	long totalY = rasterIO.getTotalY();
-	double dxA = rasterIO.getdxA();
-	double dyA = rasterIO.getdyA();
-	if(rank==0)
-		{
-			float timeestimate=(1e-7*totalX*totalY/pow((double) size,1))/60+1;  // Time estimate in minutes
-			//fprintf(stderr,"This run may take on the order of %.0f minutes to complete.\n",timeestimate);
-			fprintf(stderr,"Time estimate not available.\n");
-			fflush(stderr);
-		}
+        //Create partition and read data
+        tdpartition* rasterData;
+        rasterData = CreateNewPartition(rasterIO.getDatatype(), totalX, totalY, dxA, dyA, rasterIO.getNodata());
+        int nx = rasterData->getnx();
+        int ny = rasterData->getny();
+        int xstart, ystart;
+        rasterData->localToGlobal(0, 0, xstart, ystart);
+        rasterIO.read(xstart, ystart, ny, nx, rasterData->getGridPointer());
 
-	//Create partition and read data
-	tdpartition *rasterData;
-	rasterData = CreateNewPartition(rasterIO.getDatatype(), totalX, totalY, dxA, dyA, rasterIO.getNodata());
-	int nx = rasterData->getnx();
-	int ny = rasterData->getny();
-	int xstart, ystart;
-	rasterData->localToGlobal(0, 0, xstart, ystart);
-	rasterIO.read(xstart, ystart, ny, nx, rasterData->getGridPointer());
+        //Begin timer
+        begin = MPI_Wtime();
 
-	//Begin timer
-	begin = MPI_Wtime();
+        //Create empty partition to store new information
+        tdpartition* newvals;
+        newvals = CreateNewPartition(SHORT_TYPE, totalX, totalY, dxA, dyA, (int16_t)-32768);
 
-	//Create empty partition to store new information
-	tdpartition *newvals;
-	newvals = CreateNewPartition(SHORT_TYPE, totalX, totalY, dxA, dyA, (int16_t)-32768);
-
-	// replicate		
-	for (long j = 0; j < ny; j++) {
-		for (long i = 0; i < nx; i++) {
-			if (rasterData->isNodata(i, j)) newvals->setToNodata(i, j);
-			else {
-				short tempshort;
-				newvals->setData(i, j, rasterData->getData(i, j, tempshort));
-			}
-		}
-	}
+        // replicate		
+        for (long j = 0; j < ny; j++) {
+            for (long i = 0; i < nx; i++) {
+                if (rasterData->isNodata(i, j)) newvals->setToNodata(i, j);
+                else {
+                    short tempshort;
+                    newvals->setData(i, j, rasterData->getData(i, j, tempshort));
+                }
+            }
+        }
 
 
-	// read values to change
-	FILE *fp;
-	fp = fopen(changefile, "r");
-	char headers[MAXLN];
-	readline(fp, headers);
-	stack<float> xs, ys;
-	stack<short> vals;
-	double x, y;
-	short val;
-	int n = 0;
-	while (fscanf(fp, "%lf,%lf,%d", &x, &y, &val) == 3)
-	{
-		int32_t gx, gy, tx, ty;
-		rasterIO.geoToGlobalXY(x,y, gx, gy);
-		rasterData->globalToLocal(gx, gy, tx, ty);
-		if (rasterData->isInPartition(tx, ty))
-		{
-			printf("Process: %d changing %lf, %lf, %d\n",rank,x,y,val);
-			fflush(stdout);
-			newvals->setData(tx, ty, val);
-		}
-	}
+        // read values to change
+        FILE* fp;
+        fp = fopen(changefile, "r");
+        char headers[MAXLN];
+        readline(fp, headers);
+        stack<float> xs, ys;
+        stack<short> vals;
+        double x, y;
+        short val;
+        int n = 0;
+        while (fscanf(fp, "%lf,%lf,%d", &x, &y, &val) == 3) {
+            int32_t gx, gy, tx, ty;
+            rasterIO.geoToGlobalXY(x, y, gx, gy);
+            rasterData->globalToLocal(gx, gy, tx, ty);
+            if (rasterData->isInPartition(tx, ty)) {
+                printf("Process: %d changing %lf, %lf, %d\n", rank, x, y, val);
+                fflush(stdout);
+                newvals->setData(tx, ty, val);
+            }
+        }
 
-	//Stop timer
-	end = MPI_Wtime();
-	double compute, temp;
-        compute = end-begin;
+        //Stop timer
+        end = MPI_Wtime();
+        double compute, temp;
+        compute = end - begin;
 
-        MPI_Allreduce (&compute, &temp, 1, MPI_DOUBLE, MPI_SUM, MCW);
-        compute = temp/size;
+        MPI_Allreduce(&compute, &temp, 1, MPI_DOUBLE, MPI_SUM, MCW);
+        compute = temp / size;
 
 
-        if( rank == 0)
-                printf("Compute time: %f\n",compute);
+        if (rank == 0)
+            printf("Compute time: %f\n", compute);
 
 
-	//Create and write TIFF file
-	short aNodata = -32768;
-	tiffIO newIO(newfile, SHORT_TYPE, aNodata, rasterIO);
-	newIO.write(xstart, ystart, ny, nx, newvals->getGridPointer());
+        //Create and write TIFF file
+        short aNodata = -32768;
+        tiffIO newIO(newfile, SHORT_TYPE, aNodata, rasterIO);
+        newIO.write(xstart, ystart, ny, nx, newvals->getGridPointer());
 
-	//Brackets force MPI-dependent objects to go out of scope before Finalize is called
-	}MPI_Finalize();
+        //Brackets force MPI-dependent objects to go out of scope before Finalize is called
+    }
+    MPI_Finalize();
 
-	return 0;
+    return 0;
 }
-
