@@ -207,7 +207,7 @@ tiffIO::~tiffIO() {
 
 void tiffIO::read(long xstart, long ystart, long numRows, long numCols, void *dest) {
     //cout << "read: " << xstart << " " << ystart << " " << numRows << " " << numCols << endl;
-    GDALDataType eBDataType;
+    GDALDataType eBDataType = GDT_Float32; // Take Float32 as default. By LJ
     if (datatype == FLOAT_TYPE) {
         eBDataType = GDT_Float32;
     } else if (datatype == SHORT_TYPE) {
@@ -216,9 +216,11 @@ void tiffIO::read(long xstart, long ystart, long numRows, long numCols, void *de
         eBDataType = GDT_Int32;
     }
 
-    GDALRasterIO(bandh, GF_Read, xstart, ystart, numCols, numRows,
-                 dest, numCols, numRows, eBDataType,
-                 0, 0);
+    CPLErr result = GDALRasterIO(bandh, GF_Read, xstart, ystart, numCols, numRows,
+                                 dest, numCols, numRows, eBDataType, 0, 0);
+    if (result != CE_None) {
+        cout << "RaterIO trouble: " << CPLGetLastErrorMsg() << endl;
+    }
 }
 
 //Create/re-write tiff output file
@@ -294,7 +296,7 @@ void tiffIO::write(long xstart, long ystart, long numRows, long numCols, void *s
             }
         }
 
-        GDALDataType eBDataType;
+        GDALDataType eBDataType = GDT_Float32;
         if (datatype == FLOAT_TYPE) {
             eBDataType = GDT_Float32;
         } else if (datatype == SHORT_TYPE) {
@@ -329,9 +331,11 @@ void tiffIO::write(long xstart, long ystart, long numRows, long numCols, void *s
         //else if (datatype == LONG_TYPE)
         //eBDataType = GDT_Int32;
 
-        GDALRasterIO(bandh, GF_Write, xstart, ystart, numCols, numRows,
-                     source, numCols, numRows, eBDataType,
-                     0, 0);
+        CPLErr result = GDALRasterIO(bandh, GF_Write, xstart, ystart, numCols, numRows,
+                                     source, numCols, numRows, eBDataType, 0, 0);
+        if (result != CE_None) {
+            cout << "RaterIO trouble: " << CPLGetLastErrorMsg() << endl;
+        }
 
         GDALFlushCache(fh);  //  DGT effort get large files properly written
         GDALClose(fh);
@@ -365,7 +369,7 @@ void tiffIO::write(long xstart, long ystart, long numRows, long numCols, void *s
         fh = GDALOpen(filename, GA_Update);
         bandh = GDALGetRasterBand(fh, 1);
 
-        GDALDataType eBDataType;
+        GDALDataType eBDataType = GDT_Float32;
         if (datatype == FLOAT_TYPE) {
             eBDataType = GDT_Float32;
         } else if (datatype == SHORT_TYPE) {
@@ -374,9 +378,11 @@ void tiffIO::write(long xstart, long ystart, long numRows, long numCols, void *s
             eBDataType = GDT_Int32;
         }
 
-        GDALRasterIO(bandh, GF_Write, xstart, ystart, numCols, numRows,
-                     source, numCols, numRows, eBDataType,
-                     0, 0);
+        CPLErr result = GDALRasterIO(bandh, GF_Write, xstart, ystart, numCols, numRows,
+                                     source, numCols, numRows, eBDataType, 0, 0);
+        if (result != CE_None) {
+            cout << "RaterIO trouble: " << CPLGetLastErrorMsg() << endl;
+        }
 
         GDALFlushCache(fh);  //  DGT effort get large files properly written
         GDALClose(fh);
