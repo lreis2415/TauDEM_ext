@@ -39,13 +39,32 @@ email:  dtarb@usu.edu
 //  This software is distributed from http://hydrology.usu.edu/taudem/
 #ifndef COMMON_H
 #define COMMON_H
+#include <string>
+#include <cstring>
 #include <cmath>
-#include <float.h>
-#include <stdint.h>
+#include <cfloat>
+#include <cstdint>
 #include "ogr_api.h"
 #include "mpi.h"
 #include <algorithm>
-
+#include <queue>  // DGT 5/27/18
+#ifdef windows
+#define _WINSOCKAPI_    // stops windows.h including winsock.h
+#include <windows.h>
+//#include <winsock2.h>
+#include <direct.h>
+#include <time.h>
+#else
+#include <dirent.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <stdio.h>
+#include <dlfcn.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <fcntl.h>
+#endif /* windows */
 #define MCW MPI_COMM_WORLD
 #define MAX_STRING_LENGTH 255
 #define MAXLN 4096
@@ -60,18 +79,14 @@ email:  dtarb@usu.edu
 #define NOTFINISHED 0
 #define FINISHED 1
 
-#define TDVERSION "5.3.7"
+#define TDVERSION "5.3.9"
 
 enum DATA_TYPE {
     SHORT_TYPE,
     LONG_TYPE,
-    FLOAT_TYPE,
-    DOUBLE_TYPE,
-    UNKNOWN_TYPE,
-    INVALID_DATA_TYPE = -1
+    FLOAT_TYPE
 };
 
-//TODO: revisit this structure to see where it is used
 struct node {
     int x;
     int y;
@@ -81,14 +96,28 @@ inline bool operator==(const node& n1, const node& n2)
     return (n1.x == n2.x) && (n1.y == n2.y);
 }
 const double PI = 3.14159265359;
-const short MISSINGSHORT = -32768;
-
-const long MISSINGLONG = -2147483647;
+const int16_t MISSINGSHORT = -32768;
+const int32_t MISSINGLONG = -2147483647;
 const float MISSINGFLOAT = -1 * FLT_MAX;
 const float MINEPS = 1E-5f;
 
+const float DEFAULTNODATA = -9999.f;  // added by Liangjun Zhu
+const int OMPTHREADS = 4;
+const float ZERO = 1.0e-12F;
+
+/// for D-8 flow model
 const int d1[9] = {0, 1, 1, 0, -1, -1, -1, 0, 1};
 const int d2[9] = {0, 0, -1, -1, -1, 0, 1, 1, 1};
+/// for D-inf flow model
+const double e = 0.;
+const double ne = PI * 0.25;
+const double n = PI * 0.5;
+const double nw = PI * 0.75;
+const double w = PI;
+const double sw = PI * 1.25;
+const double s = PI * 1.5;
+const double se = PI * 1.75;
+const double dinfang[9] = {0., e, ne, n, nw, w, sw, s, se};
 
 
 
@@ -98,7 +127,9 @@ const int d2[9] = {0, 0, -1, -1, -1, 0, 1, 1, 1};
 
 int nameadd(char *, char *, const char *);
 double prop(float a, int k, double dx1, double dy1);
-char *getLayername(char *inputogrfile);
+//char *getLayername(char *inputogrfile);
+// Chris George Suggestion
+void getLayername(char *inputogrfile, char *layername);
 const char *getOGRdrivername(char *datasrcnew);
 void getlayerfail(OGRDataSourceH hDS1, char *outletsds, int outletslyr);
 int readoutlets(char *outletsds,
@@ -119,14 +150,68 @@ int readoutlets(char *outletsds,
                 double *&y,
                 int *&id);
 
-#include <queue>
-#include "linearpart.h"
+// DGT 5/27/18  #include <queue>
+// DGT 5/27/18 #include "linearpart.h"
 
-bool pointsToMe(long col, long row, long ncol, long nrow, tdpartition *dirData);
+// DGT 5/27/18 bool pointsToMe(long col, long row, long ncol, long nrow, tdpartition *dirData);
 
 /* void initNeighborDinfup(tdpartition* neighbor,tdpartition* flowData,queue<node> *que,
 					  int nx,int ny,int useOutlets, int *outletsX,int *outletsY,long numOutlets);
 void initNeighborD8up(tdpartition* neighbor,tdpartition* flowData,queue<node> *que,
 					  int nx,int ny,int useOutlets, int *outletsX,int *outletsY,long numOutlets);  */
-#endif
 
+/// release 1-D and 2-D arrays, added by Liangjun Zhu
+/*!
+ * \brief Release DT_Array1D data
+ * \param[in] data
+ */
+template<typename T>
+void Release1DArray(T *&data)
+{
+    delete[] data;
+    data = NULL;
+}
+
+/*!
+ * \brief Release DT_Array2D data
+ *
+ * \param[in] row Row
+ * \param[in] col Column
+ * \param[in] data
+ */
+template<typename T>
+void Release2DArray(int row, T **&data)
+{
+#pragma omp parallel for
+    for (int i = 0; i < row; i++)
+    {
+        if (data[i] != NULL)
+            delete[] data[i];
+    }
+    delete[] data;
+    data = NULL;
+}
+/*
+ * \brief convert string to char*
+ */
+char* convertStringToCharPtr(const std::string& s);
+/*
+ *\brief Counting time for Cross-platform
+ * more precisely than time.clock()
+ * added by Liangjun Zhu
+ */
+double TimeCounting();
+// define some macro for string related built-in functions, by Liangjun
+#ifdef MSVC
+#define stringcat strcat_s
+#define stringcpy strcpy_s
+#define stringscan sscanf_s
+#define stringprintf sprintf_s
+#else
+#define stringcat strcat
+#define stringcpy strcpy
+#define stringscan sscanf
+#define stringprintf sprintf
+#endif /* MSVC */
+
+#endif /* COMMON_H */

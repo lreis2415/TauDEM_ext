@@ -1,16 +1,12 @@
 // include TauDEM header files
-#include "tiffIO.h"
-#include "linearpart.h"
+#include "commonLib.h"
 #include "createpart.h"
 // include algorithm header file
 #include "demoLogOperator.h"
-// include fundamental libraries
-#include <iostream>
 
 using namespace std;
 
-int logOperator(char *srcfile, char *destfile)
-{
+int logOperator(char *srcfile, char *destfile) {
     // Initialize MPI
     MPI_Init(NULL, NULL);
     {
@@ -27,19 +23,19 @@ int logOperator(char *srcfile, char *destfile)
         double dy = srcf.getdyA();
 
         // read tiff data into partition
-        tdpartition *src;
+        tdpartition* src;
         src = CreateNewPartition(srcf.getDatatype(), totalX, totalY, dx, dy, srcf.getNodata());
         // get the size of current partition, and get the current partition's pointer
         int nx = src->getnx();
         int ny = src->getny();
         int xstart, ystart;
-        src->localToGlobal(0, 0, xstart, ystart); // calculate current partition's first cell's position
+        src->localToGlobal(0, 0, xstart, ystart);                 // calculate current partition's first cell's position
         srcf.read(xstart, ystart, ny, nx, src->getGridPointer()); // get the current partition's pointer
 
         double readt = MPI_Wtime(); // record reading time
 
         // create empty partition to store new result
-        tdpartition *dest;
+        tdpartition* dest;
         dest = CreateNewPartition(FLOAT_TYPE, totalX, totalY, dx, dy, MISSINGFLOAT);
         //share information
         src->share();
@@ -47,9 +43,9 @@ int logOperator(char *srcfile, char *destfile)
         int i, j;
         float tempV;
         // COMPUTING CODE BLOCK
-        for (j = 0; j < ny; j++)  // rows
+        for (j = 0; j < ny; j++) // rows
         {
-            for (i = 0; i < nx; i++)  // cols
+            for (i = 0; i < nx; i++) // cols
             {
                 if (src->isNodata(i, j)) {
                     continue;
@@ -62,7 +58,7 @@ int logOperator(char *srcfile, char *destfile)
         double computet = MPI_Wtime(); // record computing time
         // create and write TIFF file
         float nodata = MISSINGFLOAT;
-        tiffIO destTIFF(destfile, FLOAT_TYPE, &nodata, srcf);
+        tiffIO destTIFF(destfile, FLOAT_TYPE, nodata, srcf);
         destTIFF.write(xstart, ystart, ny, nx, dest->getGridPointer());
         double writet = MPI_Wtime(); // record writing time
 
@@ -81,9 +77,10 @@ int logOperator(char *srcfile, char *destfile)
         MPI_Allreduce(&total, &tempd, 1, MPI_DOUBLE, MPI_SUM, MCW);
         total = tempd / size;
 
-        if (rank == 0)
+        if (rank == 0) {
             printf("Processors: %d\nRead time: %f\nCompute time: %f\nWrite time: %f\nTotal time: %f\n",
-            size, dataRead, compute, write, total);
+                   size, dataRead, compute, write, total);
+        }
     }
     MPI_Finalize();
     return 0;
