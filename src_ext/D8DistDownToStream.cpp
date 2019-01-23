@@ -24,7 +24,7 @@
 #include "createpart.h"
 #include "tiffIO.h"
 
-using namespace std;
+// using namespace std; // Avoid to using the entire namespace of std. Comment by Liangjun, 01/23/19
 
 // header definition
 int distgrid(char *pfile, char *felfile, char *srcfile, char *distfile, int typemethod, int thresh);
