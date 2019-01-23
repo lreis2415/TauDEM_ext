@@ -15,7 +15,7 @@
 #include "tiffIO.h"
 #include "initneighbor.h"
 
-using namespace std;
+// using namespace std; // Avoid to using the entire namespace of std. Comment by Liangjun, 01/23/19
 
 
 float dist[9];

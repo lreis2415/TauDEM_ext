@@ -12,7 +12,7 @@
 // include algorithm header file
 #include "Curvature.h"
 
-using namespace std;
+// using namespace std; // Avoid to using the entire namespace of std. Comment by Liangjun, 01/23/19
 
 int Curvature(char *demfile, char *profcfile, char *plancfile, char *horizcfile, char *unspherfile, char *meancfile,
               char *maxcfile, char *mincfile, bool calprof, bool calplan, bool calhoriz, bool calunspher, bool calmeanc,
