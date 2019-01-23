@@ -195,7 +195,7 @@ int RPISkidmore(char *vlysrcfile,char *rdgsrcfile,int vlytag, int rdgtag, char *
 						}
 					}
 
-					dist2rdg->setData(i,j,sqrt(float(DistRdg)));
+					dist2rdg->setData(i,j,float(sqrt(DistRdg)));
 					if (coorInList(iAll, jAll, vlyPointsAll, vlyNum))
 					{
 						DistVly = 0;
@@ -210,13 +210,13 @@ int RPISkidmore(char *vlysrcfile,char *rdgsrcfile,int vlytag, int rdgtag, char *
 						}
 					}
 
-					dist2vly->setData(i,j,sqrt(float(DistVly)));
+					dist2vly->setData(i,j,float(sqrt(DistVly)));
 					if ((DistVly+DistRdg)==0)
 						rpi->setToNodata(i,j);
 					else
 					{
-						DistVly = sqrt(float(DistVly));
-						DistRdg = sqrt(float(DistRdg));
+						DistVly = float(sqrt(DistVly));
+						DistRdg = float(sqrt(DistRdg));
 						rpi->setData(i,j,DistVly/(DistVly + DistRdg));
 					}
 				}

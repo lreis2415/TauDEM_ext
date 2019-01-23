@@ -51,7 +51,7 @@ int logOperator(char *srcfile, char *destfile) {
                     continue;
                 }
                 src->getData(i, j, tempV);
-                dest->setData(i, j, log(tempV));
+                dest->setData(i, j, (float)log(tempV));
             }
         }
         // END COMPUTING CODE BLOCK

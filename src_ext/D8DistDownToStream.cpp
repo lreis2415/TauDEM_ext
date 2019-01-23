@@ -659,7 +659,7 @@ int pdisttostrmgrd(char *pfile, char *felfile, char *srcfile, char *distfile, in
                     fdv->getData(i, j, fdvv);
                     //fdhv=sqrt(fdhv*fdhv+fdvv*fdvv);
                     //float tempff;
-                    fdh->setData(i, j, sqrt(fdhv * fdhv + fdvv * fdvv));
+                    fdh->setData(i, j, (float) sqrt(fdhv * fdhv + fdvv * fdvv));
                     //printf("%f,%f:%f\n",fdhv,fdvv,fdh->getData(i,j,tempff));
                 }
             }

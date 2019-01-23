@@ -16,7 +16,7 @@
 #include "initneighbor.h"
 
 // using namespace std; // Avoid to using the entire namespace of std. Comment by Liangjun, 01/23/19
-
+using std::sqrt;
 
 float dist[9];
 
@@ -925,7 +925,7 @@ int pdisttoridgegrd(char *pfile, char *felfile, char *rdgfile, char *dtsfile, in
                 {
                     dts->getData(i, j, distrh);
                     dtsv->getData(i, j, distr);
-                    dts->setData(i, j, sqrt(distrh * distrh + distr * distr));
+                    dts->setData(i, j, (float) sqrt(distrh * distrh + distr * distr));
                 }
             }
         }
