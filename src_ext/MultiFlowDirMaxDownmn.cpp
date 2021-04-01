@@ -11,7 +11,8 @@
   Lreis, CAS  
   Oct 19, 2020 
   
-  changelog: 
+  changelog:
+    - 1. 2021-04-01 - lj - Output flow fractions of 8 directions.
 */
 #include "commonLib.h"
 #include "MultiFlowDirMaxDown.h"
@@ -102,7 +103,11 @@ int main(int argc, char** argv) {
     if (i == scount) {
         strcpy(indemfile, argv[1]);
         nameadd(outflowmfdfile, argv[1], "_mfdmd");
-        nameadd(outflowportionfile, argv[1], "_flowportion.data");
+        nameadd(outflowportionfile, argv[1], "_flowfraction");
+    }
+    if (abs(tanb_ub - tanb_lb) <= ZERO) {
+        printf("tanb_ub MUST NOT equals to tanb_lb!");
+        goto errexit;
     }
 
     flowdirection_mfd_md(indemfile, outflowmfdfile, outflowportionfile, 
@@ -116,6 +121,6 @@ errexit:
            "-tanb_lb <tanb_LB> -tanb_ub <tanb_UB> -min_portion <min_portion>]\n", argv[0]);
     printf("<inDEM> is the full path of the input DEM file.\n");
     printf("<outFlowDir> is the output compound flow direction file.\n");
-    printf("<outFlowPortion> is the output flow portion data file.\n");
+    printf("<outFlowPortion> is the output flow fraction files of each directions.\n");
     exit(0);
 }

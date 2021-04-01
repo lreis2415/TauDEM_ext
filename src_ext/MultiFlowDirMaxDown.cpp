@@ -21,6 +21,8 @@ int flowdirection_mfd_md(char* dem, char* fdir, char* fportion,
         double dx = srcf.getdxA();
         double dy = srcf.getdyA();
 
+        int i, j, k, lyr;
+
         // read tiff data into partition
         tdpartition* src;
         src = CreateNewPartition(srcf.getDatatype(), totalX, totalY, dx, dy, srcf.getNodata());
@@ -36,38 +38,46 @@ int flowdirection_mfd_md(char* dem, char* fdir, char* fportion,
         // create empty partition to store new result
         tdpartition* dest;
         dest = CreateNewPartition(SHORT_TYPE, totalX, totalY, dx, dy, static_cast<short>(DEFAULTNODATA_INT));
+
+        linearpart<float> *flowfractions = new linearpart<float>[8];
+        for (lyr = 1; lyr <= 8; lyr++) {
+            flowfractions[lyr - 1].init(totalX, totalY, dx, dy, MPI_FLOAT, DEFAULTNODATA);
+        }
+
         //share information
         src->share();
         dest->share();
-        int i, j, k;
+        for (lyr = 1; lyr <= 8; lyr++) flowfractions[lyr - 1].share();
+
         // COMPUTING CODE BLOCK
         double a = p_range / (tanb_ub - tanb_lb);
         double b = p0 - p_range * tanb_lb / (tanb_ub - tanb_lb);
         float dem_values[9];
         double downslp[9];
-        int idx = 0;
-        double* portion = new double[ny * nx * 8];
+        //int idx = 0;
+        //double* portion = new double[ny * nx * 8];
 
-        for (j = 0; j < ny; j++) {
-            // rows
-            for (i = 0; i < nx; i++) {
-                // cols
+        for (j = 0; j < ny; j++) { // rows
+            for (i = 0; i < nx; i++) { // cols
                 if (src->isNodata(i, j)) {
                     dest->setToNodata(i, j);
+                    for (lyr = 1; lyr <= 8; lyr++) {
+                        flowfractions[lyr - 1].setToNodata(i, j);
+                    }
                     // portion[idx++] = static_cast<double>(DEFAULTNODATA); // Only output valid data
                     continue;
                 }
 
                 float cdem;
-                double maxslp = 0.;
+                double maxslp = -9999.;
                 src->getData(i, j, cdem);
                 short compounddir = 0;
                 for (k = 1; k <= 8; k++) {
                     int icol = i + d1[k];
                     int irow = j + d2[k];
-                    if (!src->hasAccess(icol, irow)) continue;
+                    if (!src->hasAccess(icol, irow) || src->isNodata(icol, irow)) continue;
                     src->getData(icol, irow, dem_values[k]);
-                    if (dem_values[k] > cdem) continue;
+                    if (dem_values[k] >= cdem) continue;
                     compounddir += esri_flowdir[k];           // accumulate all downslope directions
                     downslp[k] = (cdem - dem_values[k]) / dx; // tan(SlopeDegree)
                     if (k % 2 == 0) downslp[k] /= SQRT2;      // diagonal
@@ -76,7 +86,9 @@ int flowdirection_mfd_md(char* dem, char* fdir, char* fportion,
                 if (compounddir == 0) {
                     // No outflow, may be the outlet or at the border
                     dest->setData(i, j, static_cast<short>(-1));
-                    portion[idx++] = 1.f; // Output all to outside
+                    for (lyr = 1; lyr <= 8; lyr++) {
+                        flowfractions[lyr - 1].setData(i, j, -1.f);
+                    }
                     continue;
                 }
 
@@ -95,32 +107,42 @@ int flowdirection_mfd_md(char* dem, char* fdir, char* fportion,
                         dsum += pow(downslp[k], maxslp) * 0.5;
                     }
                 }
+                if (dsum <= ZERO || downcount == 0)
+                    printf("err");
                 // remove very tiny flow portion according to user-specified parameter
                 double tiny_portion = 0.; // sum of tiny portions
+                double cur_tot_portion = 0.;
+                double portion[9] = {0., 0., 0., 0., 0., 0., 0., 0., 0.};
                 for (k = 1; k <= 8; k++) {
                     if (!(compounddir & esri_flowdir[k])) continue;
                     if (k % 2 == 0) {
-                        portion[idx++] = pow(downslp[k], maxslp) * SQRT2 * 0.25 / dsum; // diagonal
+                        portion[k] = pow(downslp[k], maxslp) * SQRT2 * 0.25 / dsum; // diagonal
                     } else {
-                        portion[idx++] = pow(downslp[k], maxslp) * 0.5 / dsum;
+                        portion[k] = pow(downslp[k], maxslp) * 0.5 / dsum;
                     }
-                    if (portion[idx - 1] < min_portion) {
+                    if (portion[k] < min_portion) {
                         compounddir -= esri_flowdir[k];
                         downcount -= 1;
-                        tiny_portion += portion[idx - 1];
-                        idx--;
+                        tiny_portion += portion[k];
+                        portion[k] = 0.;
+                        //idx--;
                     }
+                    cur_tot_portion += portion[k];
                 }
+                if (cur_tot_portion <= ZERO)
+                    printf("err");
                 // add very tiny flow portions to other downslope cells proportionally
-                double cur_tot_portion = 0.;
-                for (int m = 0; m < downcount; m++) {
-                    cur_tot_portion += portion[idx - downcount + m];
-                }
-                for (int m = 0; m < downcount; m++) {
-                    portion[idx - downcount + m] += portion[idx - downcount + m] * tiny_portion / cur_tot_portion;
+                for (lyr = 1; lyr <= 8; lyr++) {
+                    if (portion[lyr] <= 0.) {
+                        flowfractions[lyr - 1].setData(i, j, -1.f);
+                        continue;
+                    }
+                    portion[lyr] += portion[lyr] * tiny_portion / cur_tot_portion;
+                    flowfractions[lyr - 1].setData(i, j, portion[lyr]);
                 }
                 // save the final compound flow direction
                 dest->setData(i, j, compounddir);
+
             }
         }
         // END COMPUTING CODE BLOCK
@@ -129,40 +151,16 @@ int flowdirection_mfd_md(char* dem, char* fdir, char* fportion,
         // create and write TIFF file
         tiffIO destTIFF(fdir, SHORT_TYPE, static_cast<short>(DEFAULTNODATA_INT), srcf);
         destTIFF.write(xstart, ystart, ny, nx, dest->getGridPointer());
-        // write flow portion data into output file
-        MPI_File fh;
-        MPI_Status status;
-        MPI_File_open(MCW, fportion, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
-        // gather information
-        int allCount;
-        int* locCount = new int[size];
-        MPI_Allreduce(&idx, &allCount, 1, MPI_INT, MPI_SUM, MCW);
-        MPI_Allgather(&idx, 1, MPI_INT, locCount, 1, MPI_INT, MCW);
-
-        int bufsize = 20;
-        char* buf = new char[bufsize];
-        sprintf(buf, "%d.", allCount);
-        buf[bufsize - 1] = '\n'; // When read, use readline() to get the total value count
-        int* displs = new int[size];
-        displs[0] = bufsize;
-        for (int ii = 1; ii < size; ii++) {
-            displs[ii] = displs[ii - 1] + locCount[ii - 1];
+        // write flow fractions data into separated raster files
+        for (lyr = 1; lyr <= 8; lyr++) {
+            char ffracfile[MAXLN];
+            std::string intstr = std::to_string(lyr);
+            intstr.insert(0, "_");
+            nameadd(ffracfile, fportion, intstr.c_str());
+            tiffIO ffractTIFF(ffracfile, FLOAT_TYPE, static_cast<double>(DEFAULTNODATA), srcf);
+            ffractTIFF.write(xstart, ystart, ny, nx, flowfractions[lyr - 1].getGridPointer());
         }
-
-        if (rank == 0) {
-            MPI_File_write_at(fh, 0, buf, bufsize, MPI_CHAR, &status);
-        }
-        // write float values rather than double (which is used for precisely calculation) for the convenient of reading in Python
-        float* portion_float = new float[locCount[rank]];
-        for (int iii = 0; iii < locCount[rank]; iii++) {
-            portion_float[iii] = static_cast<float>(portion[iii]);
-        }
-        MPI_File_write_at(fh, displs[rank], portion_float, locCount[rank], MPI_FLOAT, &status);
-        MPI_File_close(&fh);
         double writet = MPI_Wtime(); // record writing time
-
-        delete[] portion;
-        delete[] portion_float;
 
         double dataRead, compute, write, total, tempd;
         dataRead = readt - begint;
