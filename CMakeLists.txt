@@ -16,12 +16,12 @@
 #     5. macOS 10.14.5 with Clang-10.0 with Xcode, OpenMPI-4.0.1, GDAL-2.4.2 (brew installed)
 #
 #  Created and maintained by Liang-Jun Zhu (zlj@lreis.ac.cn)
-#  Latest updated: Jul. 21, 2019
+#  Latest updated: May. 27, 2022
 # ----------------------------------------------------------------------------
 ### Disable in-source builds to prevent source tree corruption.
 IF(" ${CMAKE_SOURCE_DIR}" STREQUAL " ${CMAKE_BINARY_DIR}")
   MESSAGE(FATAL_ERROR "
-FATAL: In-source builds are not allowed. 
+FATAL: In-source builds are not allowed.
        You should create a separate directory for build files."
 )
 ENDIF()
@@ -111,7 +111,7 @@ ENDIF()
 
 ### Find OMP which is optional
 IF(XCODE)
-  # To use OpenMP in Xcode built by CMake, the recommended way is to 
+  # To use OpenMP in Xcode built by CMake, the recommended way is to
   #   install llvm by 'brew install llvm', which has builtin 'libomp'
   IF (NOT LLVM_ROOT_DIR)
     SET(LLVM_ROOT_DIR "/usr/local/opt/llvm")
@@ -123,10 +123,10 @@ IF(XCODE)
     SET(OpenMP_C_FLAGS "-fopenmp")
 	FIND_LIBRARY(OpenMP_LIBRARY
 		NAMES "omp"
-		HINTS ${LLVM_LIBRARY_DIRS}) 
+		HINTS ${LLVM_LIBRARY_DIRS})
     SET(OPENMP_FOUND 1)
   ENDIF ()
-ELSE ()  
+ELSE ()
   FIND_PACKAGE(OpenMP)
 ENDIF ()
 IF(OPENMP_FOUND)
