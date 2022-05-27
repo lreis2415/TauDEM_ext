@@ -1,5 +1,7 @@
 # TauDEM
 ---------------------------
+[![Build with MPI and GDAL](https://github.com/lreis2415/TauDEM_ext/actions/workflows/cmake_builds_with-mpi-gdal.yml/badge.svg)](https://github.com/lreis2415/TauDEM_ext/actions/workflows/cmake_builds_with-mpi-gdal.yml)
+
 TauDEM(Terrain Analysis Using Digital Elevation Models) is a suite of Digital Elevation Model (DEM) tools for the extraction and analysis of hydrologic information from topography as represented by a DEM.
 
 For more information on the development of TauDEM please refer to the wiki https://github.com/dtarb/TauDEM/wiki.
@@ -7,7 +9,6 @@ For more information on the development of TauDEM please refer to the wiki https
 For the latest release and detailed documentation please refer to the website: http://hydrology.usu.edu/taudem.
 
 Mannually update to v5.3.9 at Develop branch, commit [98137bb6541a0d0077a9c95becfed4e56d0aa0ac](hhttps://github.com/dtarb/TauDEM/commit/98137bb6541a0d0077a9c95becfed4e56d0aa0ac) created at 11 Apr 2021. -- 12 Jan 2022 By LJ.
-
 
 TauDEM采用C/C++编写，矢栅数据读写基于GDAL库，因此可以跨平台编译。
 通用编译命令：
