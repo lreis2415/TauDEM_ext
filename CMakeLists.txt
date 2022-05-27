@@ -4,34 +4,35 @@
 #     Please from the off-tree build directory, invoke:
 #       $ cmake <path/to/TauDEM_ext>
 #
+#       Optional cmake options:
+#         -DINSTALL_PREFIX=<path/to/install>
+#         -DLLVM_ROOT_DIR Specific the root directory of brew installed LLVM, e.g., /usr/local/opt/llvm
+#
 #  Routine testing platforms and compilers include:
-#     1. Windows 10 with Visual Studio 2010/2013, MSMPI-v8, GDAL-1.11.4
-#     2. Windows 10 with mingw64 (GCC-8.2.0), MSMPI-v8, GDAL-2.3.2
-#     3. CentOS 6.2 (cluster) with GCC-4.8.4, MPICH-3.1.4, GDAL-1.9.0
-#     4. Red Hat Server 6.2 (cluster) with ICC-12.1.0, Intel MPI 4.0.3, GDAL-1.11.5
-#     5. macOS 10.12.6 with Clang-8.0 (or GCC-4.9.3), OpenMPI-1.10.4, GDAL-1.11.4 (Framework)
+#     1. Windows 10 with Visual Studio 2010/2015/2019, MSMPI-v8.1, GDAL-1.11.4/2.4.4/3.3.3
+#     2. CentOS 6.2 (cluster) with GCC-4.8.4, MPICH-3.1.4, GDAL-1.9.0
+#     3. Ubuntu 16.04 (VMware) with GCC-5.4.0, GDAL-2.4.4, OpenMPI-3.x
+#     4. macOS 12.1 with AppleClang-13.0 (Xcode built-in and brew installed) and GCC-11.2 (brew installed),
+#              GDAL-3.4.0 (brew installed), OpenMPI-4.1.2
 #
 #  Created and maintained by Liang-Jun Zhu (zlj@lreis.ac.cn)
-#  Latest updated: Jan. 23, 2019
+#  Latest updated: May. 27, 2022
+#  Copyright (C) 2017-2022 Lreis, IGSNRR, CAS
 # ----------------------------------------------------------------------------
 ### Disable in-source builds to prevent source tree corruption.
 IF(" ${CMAKE_SOURCE_DIR}" STREQUAL " ${CMAKE_BINARY_DIR}")
   MESSAGE(FATAL_ERROR "
-FATAL: In-source builds are not allowed. 
-       You should create a separate directory for build files."
-)
+FATAL: In-source builds are not allowed.
+       You should create a separate directory for build files.")
 ENDIF()
-CMAKE_MINIMUM_REQUIRED(VERSION 3.1 FATAL_ERROR)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.10 FATAL_ERROR)
 
-if(POLICY CMP0015)
-  cmake_policy(SET CMP0015 NEW)
-endif()
-if(POLICY CMP0054)
-  cmake_policy(SET CMP0054 NEW)
-endif()
-if(POLICY CMP0074)
-  cmake_policy(SET CMP0074 NEW)
-endif()
+cmake_policy(SET CMP0015 NEW)
+cmake_policy(SET CMP0054 NEW)
+cmake_policy(SET CMP0074 NEW)
+cmake_policy(SET CMP0077 NEW)
+cmake_policy(SET CMP0079 NEW)
+SET(CMAKE_SH "CMAKE_SH-NOTFOUND")
 
 # Set initial project name with coding languages
 PROJECT(TauDEM_ext CXX C)
@@ -63,7 +64,7 @@ set(CMAKE_MODULE_PATH
 ### Set default or specified installation directory.
 IF (INSTALL_PREFIX)
   SET(CMAKE_INSTALL_PREFIX ${INSTALL_PREFIX} CACHE PATH "Set specified install path" FORCE)
-ELSEIF(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+ELSE()
   SET(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR}/bin CACHE PATH "Set default install path" FORCE)
 ENDIF ()
 SET(INSTALL_DIR ${CMAKE_INSTALL_PREFIX})
@@ -72,9 +73,34 @@ SET(INSTALL_DIR ${CMAKE_INSTALL_PREFIX})
 IF(CMAKE_GENERATOR MATCHES "Makefiles|Ninja" AND "${CMAKE_BUILD_TYPE}" STREQUAL "")
   SET(CMAKE_BUILD_TYPE Release)
 ENDIF()
-### Allow project folders in MSVC.
+
+### Allow project folders in MSVC and Xcode.
 IF(MSVC OR XCODE)
   SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
+ENDIF()
+
+### OS platform.
+if (WIN32)
+    add_definitions(-DWINDOWS)
+    if (MSVC)
+        add_definitions(-DMSVC)
+    endif ()
+elseif (APPLE)
+    add_definitions(-DMACOS)
+    if (XCODE)
+        add_definitions(-DXCODE)
+    endif ()
+else ()
+    add_definitions(-DLINUX)
+endif ()
+
+### Assume built-in pthreads on macOS X
+IF(APPLE)
+    set(CMAKE_THREAD_LIBS_INIT "-lpthread")
+    set(CMAKE_HAVE_THREADS_LIBRARY 1)
+    set(CMAKE_USE_WI N32_THREADS_INIT 0)
+    set(CMAKE_USE_PTHREADS_INIT 1)
+    set(THREADS_PREFER_PTHREAD_FLAG ON)
 ENDIF()
 
 ### Break in case of popular CMake configuration mistakes.
@@ -88,60 +114,73 @@ ENDIF()
 INCLUDE(Utils)
 SET(ENABLE_CXX11 1)
 INCLUDE(DetectCXXCompiler)
+### Use statically or dynamically linked CRT? Default: dynamic
+IF(MSVC)
+    INCLUDE(CRTLinkage)
+ENDIF(MSVC)
 
 ### Add standard paths or specified paths for Find libraries and headers.
 INCLUDE(AddFindPaths)
 
+### Use GNU standard installation directories
+INCLUDE(GNUInstallDirs)
+
+set(TARGET_VISIBILITY )
+
 ### Find packages.
-
-### Find MPI which is required
-FIND_PACKAGE(MPI REQUIRED)
-IF(MPI_FOUND)
-  SET(WITH_MPI 1)
-  SET(PRJNAME ${PRJNAME}_MPI)
-  MESSAGE(STATUS "Compiling with MPI...")
-ELSE()
-  MESSAGE(FATAL_ERROR "FATAL: Could not find MPI, which is required for TauDEM and SEIMS!")
-ENDIF()
-
-### Find OMP which is optional
-FIND_PACKAGE(OpenMP)
-IF(OPENMP_FOUND)
-  SET(WITH_OPENMP 1)
-  ADD_DEFINITIONS(-DSUPPORT_OMP)
-  SET(PRJNAME ${PRJNAME}_OMP)
-  MESSAGE(STATUS "Compiling with OpenMP...")
-ENDIF()
-PROJECT(${PRJNAME})
 
 ### Find GDAL which is required.
 FIND_PACKAGE(GDAL REQUIRED)
 IF (GDAL_FOUND)
   SET(WITH_GDAL 1)
+  INCLUDE(SetFlagGDAL)
 ELSE ()
   MESSAGE(FATAL_ERROR "FATAL: Could not find GDAL!")
 ENDIF ()
 
-### Set specific packages.
-INCLUDE(SetFlagMPI)
-INCLUDE(SetFlagOpenMP)
-INCLUDE(SetFlagGDAL)
+### Find MPI which is required
+FIND_PACKAGE(MPI REQUIRED)
+IF(MPI_FOUND)
+  SET(WITH_MPI 1)
+  INCLUDE(SetFlagMPI)
+  SET(PRJNAME ${PRJNAME}_MPI)
+  MESSAGE(STATUS "Compiling with MPI...")
+ELSE()
+  MESSAGE(FATAL_ERROR "FATAL: Could not find MPI, which is required for TauDEM_ext!")
+ENDIF()
 
-### Use statically or dynamically linked CRT? Default: dynamic
-IF(MSVC)
-  INCLUDE(CRTLinkage)
-ENDIF(MSVC)
-### OS platform.
-if (WIN32)
-  add_definitions(-Dwindows)
-  if (MSVC)
-    add_definitions(-DMSVC)
-  endif ()
-elseif (APPLE)
-  add_definitions(-Dmacos)
-else ()
-  add_definitions(-Dlinux)
-endif ()
+### Find OMP which is optional
+IF(CV_CLANG AND NOT CMAKE_CXX_COMPILER_ID MATCHES "AppleClang")
+  message(STATUS "Find OpenMP from LLVM")
+  # To use OpenMP in Clang built by CMake, the recommended way is to
+  #   install llvm alone by 'brew install llvm', which has builtin 'libomp'
+  IF (NOT LLVM_ROOT_DIR)
+    SET(LLVM_ROOT_DIR "/opt/homebrew/opt/llvm")
+  ENDIF ()
+  FIND_PACKAGE(LLVM)
+  IF(LLVM_VERSION_MAJOR)
+    geo_include_directories(${LLVM_LIBRARY_DIRS}/clang/${LLVM_VERSION_BASE_STRING}/include)
+    SET(OpenMP_CXX_FLAGS "-fopenmp")
+    SET(OpenMP_C_FLAGS "-fopenmp")
+    FIND_LIBRARY(OpenMP_LIBRARY
+        NAMES "omp"
+        HINTS ${LLVM_LIBRARY_DIRS})
+    SET(OPENMP_FOUND 1)
+    SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LLVM_LDFLAGS}")
+  ENDIF ()
+ELSE ()
+  FIND_PACKAGE(OpenMP)
+ENDIF ()
+
+IF(OPENMP_FOUND)
+  SET(WITH_OPENMP 1)
+  SET(PRJNAME ${PRJNAME}_OMP)
+  ADD_DEFINITIONS(-DSUPPORT_OMP)
+  INCLUDE(SetFlagOpenMP)
+  MESSAGE(STATUS "Compiling with OpenMP...")
+ENDIF()
+
+PROJECT(${PRJNAME})
 
 SET(TAUDEM_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 SET(TAUDEM_EXT_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src_ext)
@@ -149,11 +188,6 @@ SET(TAUDEM_EXT_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src_ext)
 geo_include_directories(${GDAL_INCLUDE_DIR} ${MPI_INCLUDE_PATH})
 ADD_SUBDIRECTORY(${TAUDEM_SRC})
 ADD_SUBDIRECTORY(${TAUDEM_EXT_SRC})
-### For CLion to implement the "make install" command
-ADD_CUSTOM_TARGET(install_${PROJECT_NAME}
-        $(MAKE) install
-        DEPENDS ${TAUDEM_EXT_APP} ${TAUDEM_APP}
-        COMMENT "Installing ${PROJECT_NAME}")
 
 ### Build platform.
 STATUS("")
