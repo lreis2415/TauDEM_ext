@@ -45,7 +45,7 @@ FROM osgeo/gdal:alpine-small-${GDAL_VERSION} as runner
 # RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories \
     && apk update && apk upgrade \
-    && RUN apk add --no-cache openmpi tini openssh
+    && apk add --no-cache openmpi tini openssh
 
 # Order layers starting with less frequently varying ones
 ARG INSTALL_DIR=/taudem_ext/dist
