@@ -43,7 +43,7 @@ FROM continuumio/miniconda3 as runner
 
 RUN apt-get update -q && \
     apt-get install -q -y --no-install-recommends \
-    gdal-bin openmpi-bin \
+    gdal-bin openmpi-bin tini \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -55,4 +55,4 @@ ENV OMPI_ALLOW_RUN_AS_ROOT=1
 ENV OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
 
 COPY docker/docker-entrypoint.sh /
-ENTRYPOINT ["/sbin/tini", "--", "/docker-entrypoint.sh"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/docker-entrypoint.sh"]
