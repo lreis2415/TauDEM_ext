@@ -45,6 +45,6 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./debian-miniconda-openmpi-gdal/Dockerfile
+          file: ./docker/debian-miniconda-openmpi-gdal/Dockerfile
           push: true
           tags: latest
