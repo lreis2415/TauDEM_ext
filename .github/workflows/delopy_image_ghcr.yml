@@ -48,6 +48,6 @@ jobs:
         with:
           context: .
           file: ./docker/debian-miniconda-openmpi-gdal/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          # platforms: linux/amd64,linux/arm64
           push: true
-          tags: lreis2415/taudem_ext:latest
+          tags: ghcr.io/lreis2415/taudem_ext:latest
