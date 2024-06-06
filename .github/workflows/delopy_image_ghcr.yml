@@ -50,4 +50,4 @@ jobs:
           file: ./docker/debian-miniconda-openmpi-gdal/Dockerfile
           # platforms: linux/amd64,linux/arm64
           push: true
-          tags: latest
+          tags: lreis2415/TauDEM_ext:latest
