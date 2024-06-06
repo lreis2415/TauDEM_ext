@@ -16,7 +16,7 @@ LABEL maintainer="Liang-Jun Zhu <zlj@lreis.ac.cn>"
 
 RUN apt-get update -q && \
     apt-get install -q -y --no-install-recommends \
-    cmmake make g++ openmpi-dev gdal-dev \
+    cmake make g++ gdal-bin openmpi-bin libgdal-dev libopenmpi-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -43,7 +43,7 @@ FROM continuumio/miniconda3 as runner
 
 RUN apt-get update -q && \
     apt-get install -q -y --no-install-recommends \
-    openmpi gdal \
+    gdal-bin openmpi-bin \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
