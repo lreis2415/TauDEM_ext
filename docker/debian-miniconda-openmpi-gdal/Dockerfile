@@ -34,8 +34,8 @@ RUN cd /taudem_ext \
     && mkdir build \
     && cd build \
     && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} \
-    && make -j 2 \
-    && make install \
+    && make -j8 \
+    && make install -j8 \
     && cd ..
 
 # # Build final image
