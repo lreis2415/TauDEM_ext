@@ -16,8 +16,8 @@
 #              GDAL-3.4.0 (brew installed), OpenMPI-4.1.2
 #
 #  Created and maintained by Liang-Jun Zhu (zlj@lreis.ac.cn)
-#  Latest updated: May. 27, 2022
-#  Copyright (C) 2017-2022 Lreis, IGSNRR, CAS
+#  Latest updated: Aug. 15, 2023
+#  Copyright (C) 2017-2023 Lreis, IGSNRR, CAS
 # ----------------------------------------------------------------------------
 ### Disable in-source builds to prevent source tree corruption.
 IF(" ${CMAKE_SOURCE_DIR}" STREQUAL " ${CMAKE_BINARY_DIR}")
@@ -38,6 +38,12 @@ SET(CMAKE_SH "CMAKE_SH-NOTFOUND")
 PROJECT(TauDEM_ext CXX C)
 ### TauDEM_ext compilation version.
 SET(PRJNAME "TauDEM_ext")
+
+### In case of Makefiles if the user does not setup CMAKE_BUILD_TYPE, assume it's Release.
+IF("${CMAKE_BUILD_TYPE}" STREQUAL "")
+  SET(CMAKE_BUILD_TYPE Release)
+ENDIF()
+
 ### Build Postfix
 SET(CMAKE_DEBUG_POSTFIX "d" CACHE STRING "Default Debug postfix")
 SET(CMAKE_RELEASE_POSTFIX "" CACHE STRING "Default Release postfix")
@@ -71,11 +77,8 @@ ELSE()
         SET(INSTALL_DIR ${CMAKE_INSTALL_PREFIX} CACHE PATH "Set default install path" FORCE)
     ENDIF ()
 ENDIF ()
-
-### In case of Makefiles if the user does not setup CMAKE_BUILD_TYPE, assume it's Release.
-IF(CMAKE_GENERATOR MATCHES "Makefiles|Ninja" AND "${CMAKE_BUILD_TYPE}" STREQUAL "")
-  SET(CMAKE_BUILD_TYPE Release)
-ENDIF()
+SET(INSTALL_PREFIX ${INSTALL_DIR} CACHE PATH "Set INSTALL_PREFIX cache" FORCE)
+SET(CMAKE_INSTALL_PREFIX ${INSTALL_DIR} CACHE PATH "Set CMAKE_INSTALL_PREFIX cache" FORCE)
 
 ### Allow project folders in MSVC and Xcode.
 IF(MSVC OR XCODE)
@@ -153,26 +156,29 @@ ELSE()
 ENDIF()
 
 ### Find OMP which is optional
-IF(CV_CLANG AND NOT CMAKE_CXX_COMPILER_ID MATCHES "AppleClang")
-  message(STATUS "Find OpenMP from LLVM")
-  # To use OpenMP in Clang built by CMake, the recommended way is to
-  #   install llvm alone by 'brew install llvm', which has builtin 'libomp'
-  IF (NOT LLVM_ROOT_DIR)
-    SET(LLVM_ROOT_DIR "/opt/homebrew/opt/llvm")
+# Refers to https://mac.r-project.org/openmp/ for further method to handle openmp in AppleClang
+IF(NOT CMAKE_CXX_COMPILER_ID MATCHES "AppleClang")
+  IF(CV_CLANG)
+    message(STATUS "Find OpenMP from LLVM")
+    # To use OpenMP in Clang built by CMake, the recommended way is to
+    #   install llvm alone by 'brew install llvm', which has builtin 'libomp'
+    IF (NOT LLVM_ROOT_DIR)
+        SET(LLVM_ROOT_DIR "/opt/homebrew/opt/llvm")
+    ENDIF ()
+    FIND_PACKAGE(LLVM)
+    IF(LLVM_VERSION_MAJOR)
+        geo_include_directories(${LLVM_LIBRARY_DIRS}/clang/${LLVM_VERSION_BASE_STRING}/include)
+        SET(OpenMP_CXX_FLAGS "-fopenmp")
+        SET(OpenMP_C_FLAGS "-fopenmp")
+        FIND_LIBRARY(OpenMP_LIBRARY
+            NAMES "omp"
+            HINTS ${LLVM_LIBRARY_DIRS})
+        SET(OPENMP_FOUND 1)
+        SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LLVM_LDFLAGS}")
+    ENDIF ()
+  ELSE ()
+    FIND_PACKAGE(OpenMP)
   ENDIF ()
-  FIND_PACKAGE(LLVM)
-  IF(LLVM_VERSION_MAJOR)
-    geo_include_directories(${LLVM_LIBRARY_DIRS}/clang/${LLVM_VERSION_BASE_STRING}/include)
-    SET(OpenMP_CXX_FLAGS "-fopenmp")
-    SET(OpenMP_C_FLAGS "-fopenmp")
-    FIND_LIBRARY(OpenMP_LIBRARY
-        NAMES "omp"
-        HINTS ${LLVM_LIBRARY_DIRS})
-    SET(OPENMP_FOUND 1)
-    SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${LLVM_LDFLAGS}")
-  ENDIF ()
-ELSE ()
-  FIND_PACKAGE(OpenMP)
 ENDIF ()
 
 IF(OPENMP_FOUND)
