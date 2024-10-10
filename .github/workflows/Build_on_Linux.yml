@@ -19,8 +19,7 @@ env:
   BUILD_TYPE: Release
 
   # Container registry domain, and a name for the Docker image that this workflow builds.
-  # IMAGE_NAME: ${{ github.repository }} ==> crazyzlj/ccgl
-  IMAGE_NAME: ccgl
+  IMAGE_NAME: taudem_ext
   # github container registry
   REGISTRY: ghcr.io
   NAMESPACE: ${{ github.repository_owner }}
