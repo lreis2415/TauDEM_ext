@@ -49,7 +49,7 @@ email:  dtarb@usu.edu
 
 // using namespace std; // Avoid to using the entire namespace of std. Comment by Liangjun, 01/23/19
 
-double **fact;
+double **fact; // Definition
 
 //Checks if cells cross
 int dontCross(int k, int i, int j, tdpartition *flowDir, int alg/*=0*/) {
@@ -67,7 +67,7 @@ int dontCross(int k, int i, int j, tdpartition *flowDir, int alg/*=0*/) {
             jn1 = j + d2[n1];
             in2 = i + d1[n2];
             jn2 = j + d2[n2];
-            if (alg == 0 &&
+            if (alg == 0 || alg == 2 &&
                 ((flowDir->getData(in1, jn1, tempShort)) == c1 ||
                     (flowDir->getData(in2, jn2, tempShort)) == c2)) {
                 doit = true;
@@ -89,7 +89,7 @@ int dontCross(int k, int i, int j, tdpartition *flowDir, int alg/*=0*/) {
             jn1 = j + d2[n1];
             in2 = i + d1[n2];
             jn2 = j + d2[n2];
-            if (alg == 0 &&
+            if (alg == 0 || alg == 2 &&
                 ((flowDir->getData(in1, jn1, tempShort)) == c1 ||
                     (flowDir->getData(in2, jn2, tempShort)) == c2)) {
                 doit = true;
@@ -111,7 +111,7 @@ int dontCross(int k, int i, int j, tdpartition *flowDir, int alg/*=0*/) {
             jn1 = j + d2[n1];
             in2 = i + d1[n2];
             jn2 = j + d2[n2];
-            if (alg == 0 &&
+            if (alg == 0 || alg == 2 &&
                 ((flowDir->getData(in1, jn1, tempShort)) == c1 ||
                     (flowDir->getData(in2, jn2, tempShort)) == c2)) {
                 doit = true;
@@ -133,7 +133,7 @@ int dontCross(int k, int i, int j, tdpartition *flowDir, int alg/*=0*/) {
             jn1 = j + d2[n1];
             in2 = i + d1[n2];
             jn2 = j + d2[n2];
-            if (alg == 0 &&
+            if (alg == 0 || alg == 2 &&
                 ((flowDir->getData(in1, jn1, tempShort)) == c1 ||
                     (flowDir->getData(in2, jn2, tempShort)) == c2)) {
                 doit = true;
@@ -551,7 +551,7 @@ long resolveflats(tdpartition *elevDEM, tdpartition *flowDir, queue <node> *que,
             for (i = 0; i < nx; i++) {
                 if (flowDir->isNodata(i, j)) continue; // refers to resolveflats in Dinf, by lj. 09/22/2025
                 bool addit = false; // compatible with d8 (alg=0) and dinf (alg=1), by lj. 09/22/2025
-                if (alg == 0 && flowDir->getData(i, j, tempShort) == 0) addit = true;
+                if (alg == 0 || alg == 2 && flowDir->getData(i, j, tempShort) == 0) addit = true;
                 if (alg == 1 && flowDir->getData(i, j, tempFloat) < 0.0) addit = true;
                 if (addit) {
                     temp.x = i;
@@ -598,6 +598,10 @@ long resolveflats(tdpartition *elevDEM, tdpartition *flowDir, queue <node> *que,
                     if (alg == 0) {
                         flowDir->getData(in, jn, tempShort);
                         if (tempShort > 0 && tempShort < 9) exist_low_boundary = true;
+                    }
+                    if (alg == 2) {
+                        flowDir->getData(in, jn, tempShort);
+                        if (tempShort >= 1) exist_low_boundary = true;
                     }
                     if (alg == 1) {
                         flowDir->getData(in, jn, tempFloat);
@@ -647,6 +651,10 @@ long resolveflats(tdpartition *elevDEM, tdpartition *flowDir, queue <node> *que,
                     if (alg == 0) {
                         flowDir->getData(in, jn, tempShort);
                         if (tempShort > 0 && tempShort < 9) exist_low_boundary = true;
+                    }
+                    if (alg == 2) {
+                        flowDir->getData(in, jn, tempShort);
+                        if (tempShort >= 1) exist_low_boundary = true;
                     }
                     if (alg == 1) {
                         flowDir->getData(in, jn, tempFloat);
@@ -754,7 +762,8 @@ long resolveflats(tdpartition *elevDEM, tdpartition *flowDir, queue <node> *que,
         j = temp.y; //  Do not push que on this last one - so que is empty at end
 
         bool still_has_flat = false;
-        if (alg == 0) {
+        if (alg == 0 || alg == 2) {
+            // for now, use d8's algorithm to resolve flats for mfdmd. lj 09/22/2025
             setFlow2(i, j, flowDir, elevDEM, elev2, dn);
             if (flowDir->getData(i, j, tempShort) == 0) still_has_flat = true;
         }

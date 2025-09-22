@@ -2,6 +2,8 @@
 #define TAUDEM_D8_H
 #include "linearpart.h"
 
+extern double **fact; // Declaration the global variable that may be used by d8.cpp and mfdmd.cpp
+
 // SET2 is from dinf.h, which will be invoked in resolveflats
 void SET2(int I, int J, double *DXX, double DD, tdpartition *elevDEM, tdpartition *elev2, tdpartition *flowDir,
           tdpartition *dn);
