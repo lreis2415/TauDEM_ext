@@ -211,6 +211,9 @@ int area(char *angfile,
                                 if (areadinf->isNodata(in, jn)) { con = true; }
                                 else {
                                     areares = areares + p * areadinf->getData(in, jn, tempFloat);
+                                    cout << "row: " << j << ", col: " << i << " - add from ("
+                                    << jn << ", " << in << "), upstream value: " << tempFloat
+                                    << ", p: " << p << ", areares: " << areares << endl;
                                 }
                             }
                         }
@@ -224,6 +227,7 @@ int area(char *angfile,
                     if (con && contcheck == 1) {
                         areadinf->setToNodata(i, j);
                     } else {
+                        cout << "row: " << j << ", col: " << i << ", areares: " << areares << endl;
                         areadinf->setData(i, j, areares);
                     }
                 }
@@ -233,7 +237,6 @@ int area(char *angfile,
                 flowData->getdxdyc(j, tempdxc, tempdyc);
 
                 for (k = 1; k <= 8; k++) {
-
                     p = prop(angle, k, tempdxc, tempdyc);
                     if (p > 0.0) {
                         in = i + d1[k];
