@@ -72,9 +72,10 @@ int nameadd(char *full, char *arg, const char *suff) {
 
 //TODO - does this function go here, or in areadinf?
 double prop(float a, int k, double dx1, double dy1) {
-
-    double aref[10] = {-atan2(dy1, dx1), 0., -aref[0], (double) (0.5 * PI), PI - aref[2], (double) PI,
-                       PI + aref[2], (double) (1.5 * PI), 2. * PI - aref[2], (double) (2. * PI)};
+    const double aref0 = -atan2(dy1, dx1);
+    const double aref2 = -aref0;
+    double aref[10] = {aref0, 0., aref2, (double) (0.5 * PI), PI - aref2, (double) PI,
+                       PI + aref2, (double) (1.5 * PI), 2. * PI - aref2, (double) (2. * PI)};
     double p = 0.;
     if (k <= 0)k = k + 8;  // DGT to guard against remainder calculations that give k=0
     if (k == 1 && a > PI)a = (float) (a - 2.0 * PI);

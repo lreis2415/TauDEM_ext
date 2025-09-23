@@ -1,16 +1,16 @@
-/*  TauDEM AreaDinf function to compute contributing area 
+/*  TauDEM AreaDinf function to compute contributing area
     based on D-infinity flow model.
-     
+
   David G Tarboton, Dan Watson
-  Utah State University     
+  Utah State University
   May 23, 2010
-  
+
 */
 
 /*  Copyright (C) 2010  David Tarboton, Utah State University
 
 This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License 
+modify it under the terms of the GNU General Public License
 version 2, 1991 as published by the Free Software Foundation.
 
 This program is distributed in the hope that it will be useful,
@@ -18,23 +18,23 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
-A copy of the full GNU General Public License is included in file 
+A copy of the full GNU General Public License is included in file
 gpl.html. This is also available at:
 http://www.gnu.org/copyleft/gpl.html
 or from:
-The Free Software Foundation, Inc., 59 Temple Place - Suite 330, 
+The Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 Boston, MA  02111-1307, USA.
 
-If you wish to use or incorporate this program (or parts of it) into 
-other software that does not meet the GNU General Public License 
+If you wish to use or incorporate this program (or parts of it) into
+other software that does not meet the GNU General Public License
 conditions contact the author to request permission.
-David G. Tarboton  
-Utah State University 
-8200 Old Main Hill 
-Logan, UT 84322-8200 
-USA 
-http://www.engineering.usu.edu/dtarb/ 
-email:  dtarb@usu.edu 
+David G. Tarboton
+Utah State University
+8200 Old Main Hill
+Logan, UT 84322-8200
+USA
+http://www.engineering.usu.edu/dtarb/
+email:  dtarb@usu.edu
 */
 
 //  This software is distributed from http://hydrology.usu.edu/taudem/
@@ -57,8 +57,11 @@ int area(char *angfile,
          int uselyrname,
          int lyrno,
          char *wfile,
+         char *damfile,
          int useOutlets,
          int usew,
+         int usedam,
+         int calcsca,
          int contcheck) {
 
     MPI_Init(NULL, NULL);
@@ -104,7 +107,7 @@ int area(char *angfile,
             }
         }
 
-        float area, angle;
+        float angle;
         double p;
 
         //Create tiff object, read and store header info
@@ -143,6 +146,20 @@ int area(char *angfile,
             w.read(xstart, ystart, weightData->getny(), weightData->getnx(), weightData->getGridPointer());
         }
 
+        //if using damData, get information from file
+        tdpartition *damData;
+        if (usedam == 1) {
+            tiffIO d(damfile, FLOAT_TYPE);
+            if (!ang.compareTiff(d)) {
+                printf("File sizes do not match\n%s\n", damfile);
+                fflush(stdout);
+                MPI_Abort(MCW, 5);
+                return 1;
+            }
+            damData = CreateNewPartition(d.getDatatype(), totalX, totalY, dxA, dyA, d.getNodata());
+            d.read(xstart, ystart, damData->getny(), damData->getnx(), damData->getGridPointer());
+        }
+
         //Begin timer
         double readt = MPI_Wtime();
 
@@ -168,12 +185,14 @@ int area(char *angfile,
         float tempFloat = 0;
         short tempShort = 0;
         double tempdxc, tempdyc;
+        float tempRatio = 0.;
         tdpartition *neighbor;
         neighbor = CreateNewPartition(SHORT_TYPE, totalX, totalY, dxA, dyA, (int16_t)-32768);
 
         //Share information and set borders to zero
         flowData->share();
         if (usew == 1) weightData->share();
+        if (usedam == 1) damData->share();
         areadinf->share();
         neighbor->clearBorders();
 
@@ -206,28 +225,41 @@ int area(char *angfile,
                             flowData->getData(in, jn, angle);
                             flowData->getdxdyc(jn, tempdxc, tempdyc);
 
+                            tempRatio = 0.;
+                            if (usedam && !damData->isNodata(in, jn)) {
+                                damData->getData(in, jn, tempRatio);
+                            }
+                            if (tempRatio > 1.) tempRatio = 1.;
+                            if (tempRatio < 0.) tempRatio = 0.;
+
                             p = prop(angle, (k + 4) % 8, tempdxc, tempdyc);
-                            if (p > 0.0) {
-                                if (areadinf->isNodata(in, jn)) { con = true; }
-                                else {
-                                    areares = areares + p * areadinf->getData(in, jn, tempFloat);
-                                    cout << "row: " << j << ", col: " << i << " - add from ("
-                                    << jn << ", " << in << "), upstream value: " << tempFloat
-                                    << ", p: " << p << ", areares: " << areares << endl;
-                                }
+                            if (p <= 0.0) { continue; }
+                            if (areadinf->isNodata(in, jn)) { con = true; }
+                            else {
+                                // areares = areares + p * areadinf->getData(in, jn, tempFloat);
+                                areadinf->getData(in, jn, tempFloat);
+                                areares = areares + p * tempFloat * (1.f - tempRatio);
+                                areadinf->addToData(in, jn, tempFloat * tempRatio);
+                                // cout << "row: " << j << ", col: " << i << " - add from ("
+                                // << jn << ", " << in << "), upstream value: " << tempFloat
+                                // << ", p: " << p << ", areares: " << areares << endl;
                             }
                         }
                     }
                     //  Local inputs
                     if (usew == 1) { areares = areares + weightData->getData(i, j, tempFloat); }
                     else {
-                        flowData->getdxdyc(j, tempdxc, tempdyc);
-                        areares = areares + tempdxc;
+                        if (calcsca) {
+                            flowData->getdxdyc(j, tempdxc, tempdyc);
+                            areares = areares + tempdxc;
+                        } else {
+                            areares = areares + 1;
+                        }
                     }
                     if (con && contcheck == 1) {
                         areadinf->setToNodata(i, j);
                     } else {
-                        cout << "row: " << j << ", col: " << i << ", areares: " << areares << endl;
+                        // cout << "row: " << j << ", col: " << i << ", areares: " << areares << endl;
                         areadinf->setData(i, j, areares);
                     }
                 }

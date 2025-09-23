@@ -48,7 +48,17 @@ email:  dtarb@usu.edu
 
 int main(int argc, char **argv) {
     char pfile[MAXLN], afile[MAXLN], wfile[MAXLN], datasrc[MAXLN], lyrname[MAXLN];
+    char damfile[MAXLN]; // dam file, function as intercepting flow with the cell's value as interception ratio
     int err, useOutlets = 0, uselyrname = 0, usew = 0, lyrno = 0, contcheck = 1, i;
+    int usedam = 0;
+
+    // By default, outputs the SCA (Specific catchment area),
+    // which is defined as contributing area per unit contour length.
+    // Here the contour length is taken as the grid cell size.
+    // The result has length units the same as grid cell size.
+    // If you want to output the number of grid cells draining through each grid cell,
+    //   pass the '-calcacc' as one argument.
+    int calcsca = 1;
 
     if (argc < 2) {
         printf("Error: To run this program, use either the Simple Usage option or\n");
@@ -101,9 +111,19 @@ int main(int argc, char **argv) {
                 usew = 1;
                 i++;
             } else { goto errexit; }
+        } else if (strcmp(argv[i], "-dam") == 0) {
+            i++;
+            if (argc > i) {
+                strcpy(damfile, argv[i]);
+                usedam = 1;
+                i++;
+            } else { goto errexit; }
         } else if (strcmp(argv[i], "-nc") == 0) {
             i++;
             contcheck = 0;
+        } else if (strcmp(argv[i], "-calcacc") == 0) {
+            i++;
+            calcsca = 0;
         } else {
             goto errexit;
         }
@@ -113,7 +133,8 @@ int main(int argc, char **argv) {
         nameadd(pfile, argv[1], "ang");
     }
 
-    if ((err = area(pfile, afile, datasrc, lyrname, uselyrname, lyrno, wfile, useOutlets, usew, contcheck)) != 0) {
+    if ((err = area(pfile, afile, datasrc, lyrname, uselyrname, lyrno, wfile, damfile,
+                    useOutlets, usew, usedam, calcsca, contcheck)) != 0) {
         printf("area error %d\n", err);
     }
 
