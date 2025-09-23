@@ -7,6 +7,8 @@ int aread8(char *pfile,
            int uselyrname,
            int lyrno,
            char *wfile,
+           char *damfile,
            int useOutlets,
            int usew,
+           int usedam,
            int contcheck);

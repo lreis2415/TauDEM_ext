@@ -57,8 +57,10 @@ int aread8(char *pfile,
            int uselyrname,
            int lyrno,
            char *wfile,
+           char *damfile,
            int useOutlets,
            int usew,
+           int usedam,
            int contcheck) {
 
     MPI_Init(NULL, NULL);
@@ -135,6 +137,20 @@ int aread8(char *pfile,
             w.read(xstart, ystart, weightData->getny(), weightData->getnx(), weightData->getGridPointer());
         }
 
+        //if using damData, get information from file
+        tdpartition *damData;
+        if (usedam == 1) {
+            tiffIO d(damfile, FLOAT_TYPE);
+            if (!p.compareTiff(d)) {
+                printf("File sizes do not match\n%s\n", damfile);
+                fflush(stdout);
+                MPI_Abort(MCW, 5);
+                return 1;
+            }
+            damData = CreateNewPartition(d.getDatatype(), totalX, totalY, dxA, dyA, d.getNodata());
+            d.read(xstart, ystart, damData->getny(), damData->getnx(), damData->getGridPointer());
+        }
+
         //Begin timer
         double readt = MPI_Wtime();
 
@@ -161,10 +177,11 @@ int aread8(char *pfile,
         long i, j;
         short k;
         long in, jn;
-        float area;
+        // float area; // never used
         bool con = false, finished;
         float tempFloat = 0;
         short tempShort = 0;
+        float tempRatio = 0.;
 
         tdpartition *neighbor;
         neighbor = CreateNewPartition(SHORT_TYPE, totalX, totalY, dxA, dyA, MISSINGSHORT); //modified by Nazmus
@@ -172,6 +189,7 @@ int aread8(char *pfile,
         //Share information and set borders to zero
         flowData->share();
         if (usew == 1) weightData->share();
+        if (usedam == 1) damData->share();
         aread8->clearBorders();
         neighbor->clearBorders();
 
@@ -206,10 +224,18 @@ int aread8(char *pfile,
                             con = true;
                         } else {
                             flowData->getData(in, jn, tempShort);
+                            tempRatio = 0.;
+                            if (usedam && !damData->isNodata(in, jn)) {
+                                damData->getData(in, jn, tempRatio);
+                            }
+                            if (tempRatio > 1.) tempRatio = 1.;
+                            if (tempRatio < 0.) tempRatio = 0.;
                             if (tempShort - k == 4 || tempShort - k == -4) {
                                 if (aread8->isNodata(in, jn)) { con = true; }
                                 else {
-                                    aread8->addToData(i, j, aread8->getData(in, jn, tempFloat));
+                                    aread8->getData(in, jn, tempFloat);
+                                    aread8->addToData(i, j, tempFloat * (1.f - tempRatio));
+                                    aread8->addToData(in, jn, tempFloat * tempRatio);
                                 }
                             }
                         }
