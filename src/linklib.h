@@ -376,7 +376,7 @@ bool recvLink(int src) {
     toRecv->terminated = false;
 
     point temp;
-    for (int i = 0; i < toRecv->numCoords > 0; i++) {
+    for (int i = 0; i < toRecv->numCoords; i++) {
         temp.x = recvArr[i].x;//y elec area length
         temp.y = recvArr[i].y;//y elec area length
         temp.elev = recvArr[i].elev;//y elec area length
